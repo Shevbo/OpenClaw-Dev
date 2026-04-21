@@ -22,7 +22,10 @@ FETCH_PROXY="${OBSERVER_FETCH_PROXY:-$HOME/.local/bin/proxy6-fetch-proxy-env.py}
 SYNC_SYSTEM_PROXY="${OBSERVER_SYNC_SYSTEM_PROXY:-/usr/local/sbin/sync-proxy6-system-env.sh}"
 MAX_LOG_BYTES="${OBSERVER_MAX_LOG_BYTES:-1048576}"
 FAILS_BEFORE_REBOOT="${OBSERVER_FAILS_BEFORE_REBOOT:-12}"
-# Алерт «No available auth profile for google» отдельно (иначе спам на каждый новый хэш среза журнала)
+# Шлюз после cold start часто 20–40 с до HTTP (см. journal «starting HTTP server» → «ready»); 4 с давали ложный «не поднялся».
+GATEWAY_HTTP_WAIT_MAX_SEC="${OBSERVER_GATEWAY_HTTP_WAIT_MAX_SEC:-120}"
+GATEWAY_HTTP_POLL_SEC="${OBSERVER_GATEWAY_HTTP_POLL_SEC:-3}"
+# Алерт «No available auth profile для google» отдельно (иначе спам на каждый новый хэш среза журнала)
 GOOGLE_AUTH_ALERT_COOLDOWN_SEC="${OBSERVER_GOOGLE_AUTH_ALERT_COOLDOWN_SEC:-21600}"
 # 12 * 5 мин ≈ 1 час полного даунтайма шлюза
 # Реестр авто-исправлений: ~/.config/openclaw/observer/troubleshooting/ (или рядом со скриптом)
@@ -139,7 +142,11 @@ check_gateway_systemd() {
 heal_gateway() {
 	log "heal: restart $GATEWAY_UNIT"
 	systemctl --user restart "$GATEWAY_UNIT" || systemctl --user start "$GATEWAY_UNIT"
-	sleep 4
+	if wait_gateway_http; then
+		log "heal: gateway HTTP ok within ${GATEWAY_HTTP_WAIT_MAX_SEC}s"
+	else
+		log "heal: gateway HTTP still failing after ${GATEWAY_HTTP_WAIT_MAX_SEC}s wait"
+	fi
 }
 
 check_gateway_http() {
@@ -147,6 +154,18 @@ check_gateway_http() {
 	env -u ALL_PROXY -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy \
 		NO_PROXY='127.0.0.1,localhost' no_proxy='127.0.0.1,localhost' \
 		curl -sf --max-time 10 --noproxy '*' "$GATEWAY_URL" -o /dev/null
+}
+
+# Ждёт, пока шлюз начнёт отвечать по HTTP (после restart / тяжёлого старта).
+wait_gateway_http() {
+	local deadline=$(( $(date +%s) + GATEWAY_HTTP_WAIT_MAX_SEC ))
+	while [[ $(date +%s) -lt "$deadline" ]]; do
+		if check_gateway_http; then
+			return 0
+		fi
+		sleep "$GATEWAY_HTTP_POLL_SEC"
+	done
+	return 1
 }
 
 run_troubleshooting_registry() {
@@ -201,7 +220,7 @@ maybe_notify_google_auth_logs() {
 		return 0
 	fi
 	echo "$now" >"$stamp"
-	notify_telegram "observer[$HOSTNAME]: Google/Gemini — нет доступного auth profile (cooldown/unavailable). Проверьте квоты/ключи в openclaw и Google Cloud. Реестр может перезапустить шлюз. Срез журнала (укороч.):
+	notify_telegram "observer[$HOSTNAME]: Google/Gemini — «нет auth profile» (часто не ключи). Типично: API вернул 503/high demand → единственный профиль google уходит в cooldown, fallback по моделям не помогает. Реестр делает restart шлюза (сбрасывает cooldown); при длительных 503 это не лечит перегруз у Google — подождите или добавьте второй ключ/профиль, снизьте нагрузку. Если есть 401/403/API_KEY_INVALID — тогда ключи/квота Cloud. Срез журнала (укороч.):
 ${chunk:0:2800}"
 }
 
@@ -270,34 +289,40 @@ if check_gateway_systemd && check_gateway_http; then
 	reset_state gw_fail
 	GATEWAY_OK=1
 elif check_gateway_systemd && ! check_gateway_http; then
-	log "gateway: systemd active but HTTP fail"
-	bump_state gw_fail
-	heal_gateway
-	if check_gateway_http; then
-		notify_telegram "observer[$HOSTNAME]: шлюз OpenClaw перезапущен (HTTP не отвечал)."
+	log "gateway: systemd active but HTTP fail — ждём медленный старт (до ${GATEWAY_HTTP_WAIT_MAX_SEC}s)"
+	if wait_gateway_http; then
+		log "gateway: HTTP ok after wait (без restart)"
 		reset_state gw_fail
 		GATEWAY_OK=1
 	else
-		notify_telegram "observer[$HOSTNAME]: шлюз не поднялся после restart. Смотри journalctl --user -u $GATEWAY_UNIT."
-		GATEWAY_OK=0
+		log "gateway: HTTP still down after wait — restart"
+		bump_state gw_fail
+		heal_gateway
+		if wait_gateway_http; then
+			notify_telegram "observer[$HOSTNAME]: шлюз OpenClaw перезапущен (HTTP не отвечал до таймаута ожидания)."
+			reset_state gw_fail
+			GATEWAY_OK=1
+		else
+			notify_telegram "observer[$HOSTNAME]: шлюз не поднялся после restart (HTTP нет после ${GATEWAY_HTTP_WAIT_MAX_SEC}s). Смотри journalctl --user -u $GATEWAY_UNIT."
+			GATEWAY_OK=0
+		fi
 	fi
 else
 	log "gateway: systemd inactive"
 	bump_state gw_fail
 	systemctl --user start "$GATEWAY_UNIT" || true
-	sleep 5
-	if check_gateway_systemd && check_gateway_http; then
+	if check_gateway_systemd && wait_gateway_http; then
 		notify_telegram "observer[$HOSTNAME]: шлюз был остановлен — запущен."
 		reset_state gw_fail
 		GATEWAY_OK=1
 	else
 		heal_gateway
-		if check_gateway_http; then
+		if wait_gateway_http; then
 			notify_telegram "observer[$HOSTNAME]: шлюз восстановлен после start/restart."
 			reset_state gw_fail
 			GATEWAY_OK=1
 		else
-			notify_telegram "observer[$HOSTNAME]: шлюз не отвечает. Нужна ручная диагностика."
+			notify_telegram "observer[$HOSTNAME]: шлюз не отвечает (HTTP после ${GATEWAY_HTTP_WAIT_MAX_SEC}s). Нужна ручная диагностика."
 			GATEWAY_OK=0
 		fi
 	fi

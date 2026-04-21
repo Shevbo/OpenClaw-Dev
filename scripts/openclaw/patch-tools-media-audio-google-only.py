@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Google-only inbound audio (STT). Removes OpenAI from audio + openai plugin + openai:default profile."""
+"""Google-only inbound audio (STT). Removes OpenAI from audio + openai plugin + openai:default profile.
+
+STT chain matches shevbo-cloud policy: gemini-3.1-flash-lite-preview, then gemini-2.5-flash-lite (GA).
+Do not use gemini-2.5-flash-lite-preview-09-2025 — removed from the Gemini API (404).
+"""
 import json
 import sys
 from pathlib import Path
@@ -14,9 +18,14 @@ media["audio"] = {
     "models": [
         {
             "provider": "google",
-            "model": "gemini-2.5-flash",
+            "model": "gemini-3.1-flash-lite-preview",
             "profile": "google:default",
-        }
+        },
+        {
+            "provider": "google",
+            "model": "gemini-2.5-flash-lite",
+            "profile": "google:default",
+        },
     ],
 }
 

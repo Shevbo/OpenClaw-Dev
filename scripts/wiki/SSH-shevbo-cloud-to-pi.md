@@ -47,6 +47,14 @@ ssh shevbo-pi 'hostname && uname -a'
 
 Должно подключаться **без пароля**.
 
+Проверка в режиме, близком к **OpenClaw `exec`** (без запроса пароля, с таймаутом):
+
+```bash
+bash scripts/ssh/verify-shevbo-pi-ssh-batchmode.sh
+```
+
+Если здесь ошибка **`Permission denied (publickey,password)`**, агент из чата **не сможет** залогиниться по SSH с паролем — настройте ключи (`ssh-copy-id` / `shevbo-cloud-install-pi-key.sh`) или используйте инструмент **`nodes`** для команд на Pi.
+
 ## 4. Разработчики и QA
 
 - Доступ с **рабочих машин** на Pi — отдельно (свои ключи или общий bastion). Связка **cloud → Pi** нужна для CI, деплоя, скриптов с VPS.

@@ -38,7 +38,7 @@
     },
     {
       "id": "google-auth-profile-unavailable",
-      "title": "Google/Gemini: нет auth profile (cooldown, квота, ключи)",
+      "title": "Google/Gemini: нет auth profile (часто 503/overloaded + cooldown одного профиля; реже ключи)",
       "journal_patterns": [
         "No available auth profile for google",
         "FailoverError: No available auth profile for google"

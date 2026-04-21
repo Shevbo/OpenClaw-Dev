@@ -23,11 +23,14 @@
 - Шлюз: **`~/.openclaw/openclaw.json`**, user-systemd **`openclaw-gateway.service`**; **`gateway.bind: lan`**; Control UI origins включали **127.0.0.1**, **localhost**, **192.144.14.187**, **`https://claw.shectory.ru`**.
 - **Caddy**: reverse proxy на шлюз; **`gateway.trustedProxies`** для **`127.0.0.1` / `::1`** — убрать WARN про untrusted proxy headers (скрипт **`cloud-set-gateway-trusted-proxies-loopback.sh`**).
 - **Прокси**: шлюз через drop-in **`openclaw-gateway.service.d/proxy.conf`** → **`/etc/proxy6/environment.env`**; **`openclaw-gateway-via-docker-group.sh`** — явный `source` прокси перед `sg docker`.
-- **Observer**: **`EnvironmentFile`** на тот же прокси + **`~/.config/proxy6/proxy.systemd.env`**; в **`openclaw-observer.sh`** — **`load_observer_proxy_env`** для детей (**registry-runner**, python). Синхронизация системного env: **`scripts/proxy6/sync-proxy6-system-env.sh`** (на сервере часто под `/usr/local/sbin/`).
+- **Observer**: **`EnvironmentFile`** на тот же прокси + **`~/.config/proxy6/proxy.systemd.env`**; в **`openclaw-observer.sh`** — **`load_observer_proxy_env`** для детей (**registry-runner**, python). Синхронизация системного env: **`scripts/proxy6/sync-proxy6-system-env.sh`** (на сервере часто под `/usr/local/sbin/`). Перед restart шлюза при «HTTP fail» — ожидание **`wait_gateway_http`** (по умолчанию до **120** с, шаг **3** с; переопределение **`OBSERVER_GATEWAY_HTTP_WAIT_MAX_SEC`** / **`OBSERVER_GATEWAY_HTTP_POLL_SEC`**), чтобы не ловить ложный даунтайм на cold start.
 - **Observer troubleshooting**: каталог **`~/.config/openclaw/observer/troubleshooting/`** — **`registry.json`**, **`registry-runner.py`**, **`fixes/*.sh`**, ingest (**`append-telegram-ingest.sh`**, **`ingest.d/`**); при совпадении по ingest — короткое сообщение в Telegram до fix.
 - **Google auth / спам в TG**: отдельный throttled-алерт (**`OBSERVER_GOOGLE_AUTH_ALERT_COOLDOWN_SEC`**, по умолчанию **21600**); реестр **`google-auth-profile-unavailable`** → restart шлюза (**cooldown 1 ч**); общий grep по логам observer под это убран.
 - **Sandbox на облаке**: **`agents.defaults.sandbox.mode: off`**, **`sandbox.browser.enabled: false`**, **`openclaw sandbox recreate --all --force`** (старый docker-sandbox убран). При **включённом** sandbox ранее: абсолютный **`/home/shevbo/.openclaw/workspace/monitoring`** в заданиях ломал политику → нужны **`monitoring/...`** или **`/workspace/monitoring/...`**; fix-скрипты меняли пути + symlink **`sandboxes/agent-*/monitoring` → workspace/monitoring** (есть **`.bak`**).
-- **Политика голоса / медиа (строго Google на cloud)**: **`tools.media.audio`** — Google (**например gemini-2.5-flash**, профиль **`google:default`**); **TTS** — **`messages.tts`** через Google; OpenAI **убран** из audio-профиля и плагина **`openai`**; **`openai-codex`** (OAuth Codex) оставлен отдельно. Патч: **`patch-tools-media-audio-google-only.py`**. Док: **`scripts/wiki/OpenClaw-shevbo-google-only-voice.md`**. Проблема «Telegram не понимает голосовые» решалась явным **`tools.media.audio`** (не OpenAI transcribe в финале).
+- **Политика голоса / медиа (строго Google на cloud)**: только **`google`** для **STT** (`tools.media.audio`) и **TTS** (`messages.tts`); OpenAI **убран** из audio и плагина **`openai`**; **`openai-codex`** (OAuth Codex) — отдельно. Патч: **`scripts/openclaw/patch-tools-media-audio-google-only.py`**. Док: **`scripts/wiki/OpenClaw-shevbo-google-only-voice.md`**. «Telegram не понимает голосовые» — явный **`tools.media.audio`** + при обязательном прокси **`channels.telegram.proxy`** (см. **`sync-telegram-proxy-from-proxy6-env.py`**).
+- **Политика моделей Gemini (shevbo-cloud, зафиксировано в вики)**: **LLM** primary — `google/gemini-3.1-flash-lite-preview`; запасной LLM — **`google/gemini-2.5-flash-lite`** (GA). Не использовать **`gemini-2.5-flash-lite-preview-09-2025`** — снята с API (**404** на `generateContent`, см. [changelog](https://ai.google.dev/gemini-api/docs/changelog)). **STT**: цепочка `gemini-3.1-flash-lite-preview` → `gemini-2.5-flash-lite` (как в патче). **TTS**: выбор в `messages.tts.providers.google.model` (3.1 TTS vs стабильный 2.5 — см. вики). **`agents.defaults.models`** — allowlist всех используемых `google/…`.
+- **Cron vs квота**: фоновые **`openclaw cron`** (`agentTurn`) при необходимости **`openclaw cron edit <id> --model google/gemini-2.5-flash-lite`**, чтобы не конкурировать с основным чатом по тем же моделям/лимитам.
+- **Шлюз и NO_PROXY**: **`scripts/openclaw/openclaw-gateway-via-docker-group.sh`** после `source` Proxy6 выставляет **`NO_PROXY=no_proxy=127.0.0.1,localhost,::1`**, чтобы шаблонный NO_PROXY из прокси-файла не уводил Google/Telegram API в direct.
 - **Секреты Google**: типично **`~/.openclaw/my_secrets.json`** + **`secrets.providers.google`** (не дублировать в чатах).
 - **SecretRef / токен шлюза в daemon**: рабочий путь — **`gateway.auth.token`** в JSON + **`openclaw gateway install`**, restart (не полагаться на обходной SecretRef без env в unit).
 - **`openclaw config set` с JSON из PowerShell** — ломалось; правки через **Python на сервере**.
@@ -59,14 +62,14 @@
 |------|----------|
 | **DNS** | Проверить **A/AAAA** для **`claw.shectory.ru`** → IP VPS. |
 | **Caddy** | Довести **443 → 127.0.0.1:18789**; при необходимости **закрыть 18789** с интернета; вставить сниппеты (**`Caddyfile.claw.shectory.ru.snippet`**, при MVP — **`Caddyfile.voice-mvp.snippet`**, каталог **`/var/www/openclaw-voice-mvp`**). |
-| **shectory-work SSH** | **`Host shevbo-cloud`**, **`shevbo-pi`**, ключи, при необходимости **jump**. |
+| **shectory-work SSH** | **`Host shevbo-cloud`**, **`shevbo-pi`**, ключи, **`ssh -o BatchMode=yes`** для проверки без пароля; см. **`scripts/ssh/verify-shevbo-pi-ssh-batchmode.sh`**. |
 | **Cron / user-скрипты** (напр. **`pull_gcp_alerts.py`**) | Могут ходить в API **мимо прокси** → **`set -a; . …proxy…; set +a`** или **user timer + unit** с **`EnvironmentFile=-/etc/proxy6/environment.env`**. |
 | **`verify-shevbo-proxy-egress.sh`** | **`curl` к `127.0.0.1:18789/__openclaw__/`** без токена может не быть **2xx** — не путать с обходом прокси наружу. |
 | **Pi** | Предупреждения **`openclaw doctor`** про Node из **nvm** в user-unit; при **DHCP** — обновить **HostName** в SSH-config. |
 | **Codex** | Нужен ли **полный отказ** от **`openai-codex`**, если не пользуетесь ACP. |
 | **Voice MVP** | Systemd для **`voice_backend.py`** на VPS; **`AGENT_URL`** — какой HTTP-эндпоинт реально дергать; интеграция с нативным Voice плагином OpenClaw — вне текущего репо. |
 | **Control UI URL** | Кто забирает **`control-ui-connect.url`** / политика не светить токен в чатах. |
-| **Google 503 / overload** | Политика **fallbacks** / частота cron — не зафиксирована кодом, только рекомендации в вики. |
+| **Google 503 / overload** | Политика **fallbacks**, отдельная **`--model`** у cron (см. вики); при **404 model not found** — сверить id с [changelog](https://ai.google.dev/gemini-api/docs/changelog), не использовать снятые preview. |
 | **Cursor sandbox / SKILL** | Пути вне **`/workspace`** — тема клиента Cursor, не VPS. |
 
 ---
@@ -75,13 +78,13 @@
 
 | Область | Пути |
 |----------|------|
-| OpenClaw cloud/Pi | **`scripts/openclaw/*.sh`**, **`patch-tools-media-audio-google-only.py`**, **`openclaw-gateway.service.d-*.conf`** |
+| OpenClaw cloud/Pi | **`scripts/openclaw/*.sh`**, **`patch-tools-media-audio-google-only.py`**, **`openclaw-gateway-via-docker-group.sh`**, **`sync-telegram-proxy-from-proxy6-env.py`**, **`patch-enable-nodes-sandbox-tool.py`**, **`patch-openclaw-dev-full-access.py`**, **`patch-agent-alsoallow-google-direct-runtime.py`**, **`openclaw-gateway.service.d-*.conf`** |
 | Observer | **`scripts/observer/openclaw-observer.sh`**, **`.service`**, **`.timer`**, **`Wiki-Observer.md`**, **`troubleshooting/*`** |
 | Прокси | **`scripts/proxy6/*`** (`sync-proxy6-system-env.sh`, `verify-shevbo-proxy-egress.sh`, `install-openclaw-gateway-proxy-dropin.sh`) |
 | Caddy | **`scripts/wiki/Caddy.md`**, **`scripts/Caddyfile.claw.shectory.ru.snippet`**, **`Caddyfile.voice-mvp.snippet`** |
 | Pi / WG | **`scripts/wiki/OpenClaw-Pi-remote-node-WireGuard.md`**, **`OpenClaw-Pi-repair-rotate-and-secrets.md`**, **`SSH-shevbo-cloud-to-pi.md`** |
 | Голос политика | **`scripts/wiki/OpenClaw-shevbo-google-only-voice.md`** |
-| SSH Windows | **`scripts/ssh/ssh-passwordless-setup.ps1`** |
+| SSH Windows / проверка | **`scripts/ssh/ssh-passwordless-setup.ps1`**, **`scripts/ssh/verify-shevbo-pi-ssh-batchmode.sh`** |
 
 ---
 
@@ -140,6 +143,8 @@ Ingest из Telegram (на облаке):
 | **Telegram «от cron»** | Чаще **observer**; отключение TG — убрать/не использовать **`telegram.env`**, не слепо таймер. |
 | **Google auth + спам TG** | Throttle + реестр + restart шлюза; ключи/квота/billing вручную. |
 | **Agent / LLM / billing-monitor** | Реестр **`agent-llm-no-response`** → validate + restart. |
+| **404 NOT_FOUND на модели** | Сверить id с [changelog Gemini](https://ai.google.dev/gemini-api/docs/changelog); для Flash Lite 2.5 использовать **`gemini-2.5-flash-lite`**, не **`…-preview-09-2025`**. |
+| **Cron rate_limit на TTS** | У джоб **`openclaw cron edit … --model google/gemini-2.5-flash-lite`** (или другой не-TTS LLM по политике). |
 | **EADDRINUSE два шлюза** | Один **`openclaw-gateway.service`**, отключить конфликтующий unit. |
 | **PowerShell Gallery за прокси** | **HTTPS_PROXY** / **`-ProxyUri`**, **`curl --proxy-user`**. |
 | **Node 20 на Pi** | **nvm + Node 22+**, глобальный **openclaw**. |
