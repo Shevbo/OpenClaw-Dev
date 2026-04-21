@@ -1,0 +1,19 @@
+claw.shectory.ru {
+	route /links/ws/* {
+		header Cache-Control "no-store, max-age=0"
+		uri strip_prefix /links/ws
+		root * /home/shevbo
+		file_server
+	}
+	route /links/api/* {
+		uri strip_prefix /links/api
+		reverse_proxy 127.0.0.1:38471
+	}
+	route /links* {
+		header Cache-Control "no-store, max-age=0"
+		uri strip_prefix /links
+		root * /var/www/openclaw-links
+		file_server
+	}
+	reverse_proxy localhost:18789
+}

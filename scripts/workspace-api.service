@@ -1,0 +1,15 @@
+[Unit]
+Description=Workspace file save API for /links/ (localhost only)
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node /home/shevbo/bin/workspace-api.mjs
+Restart=on-failure
+RestartSec=5
+Environment=HOME=/home/shevbo
+Environment=WORKSPACE_ROOT=/home/shevbo
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=default.target

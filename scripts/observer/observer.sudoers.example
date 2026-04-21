@@ -1,0 +1,4 @@
+# Пример: разрешить наблюдателю без пароля только нужные команды (visudo)
+# shevbo ALL=(root) NOPASSWD: /usr/local/sbin/sync-proxy6-system-env.sh
+# shevbo ALL=(root) NOPASSWD: /usr/bin/systemctl restart caddy
+# shevbo ALL=(root) NOPASSWD: /usr/sbin/reboot

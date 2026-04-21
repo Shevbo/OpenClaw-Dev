@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenClaw external observer (health, proxy, logs, Telegram alerts)
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment=HOME=/home/shevbo
+Environment=LC_ALL=C.UTF-8
+EnvironmentFile=-/home/shevbo/.config/openclaw/observer/observer.env
+ExecStart=/home/shevbo/bin/openclaw-observer.sh
+
+[Install]
+WantedBy=default.target

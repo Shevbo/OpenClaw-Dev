@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "description": "Сопоставление паттернов журнала шлюза OpenClaw со скриптами авто-исправления (observer). Скрипты только из каталога fixes/.",
+  "entries": [
+    {
+      "id": "docker-sock-sandbox-inspect",
+      "title": "Docker API / sandbox: permission denied на docker.sock",
+      "journal_patterns": [
+        "Failed to inspect sandbox image",
+        "permission denied.*docker\\.sock",
+        "connect to the docker API.*docker\\.sock"
+      ],
+      "fix": "fix-docker-socket-gateway.sh",
+      "cooldown_sec": 7200
+    },
+    {
+      "id": "sandbox-missing-runtime",
+      "title": "Песочница без node/python/openclaw или сломанный runtime",
+      "journal_patterns": [
+        "command not found",
+        "No such file or directory.*/bin/node",
+        "No such file or directory.*/bin/python",
+        "стандартное окружение песочницы",
+        "ключевые системные команды",
+        "openclaw.*not found",
+        "openclaw command is not available",
+        "CLI tool is not available within this sandbox"
+      ],
+      "fix": "fix-sandbox-recreate.sh",
+      "cooldown_sec": 3600
+    },
+    {
+      "id": "eaddrinuse-port",
+      "title": "Порт занят (EADDRINUSE)",
+      "journal_patterns": ["EADDRINUSE", "address already in use"],
+      "fix": "fix-eaddrinuse-gateway-caddy.sh",
+      "cooldown_sec": 3600
+    },
+    {
+      "id": "agent-llm-no-response",
+      "title": "Агент не сгенерировал ответ / cron billing-monitor (LLM, таймаут, сессия)",
+      "journal_patterns": [
+        "couldn.t generate a response",
+        "Agent couldn.t generate",
+        "billing-monitor-daily.*failed"
+      ],
+      "fix": "fix-agent-llm-gateway-recover.sh",
+      "cooldown_sec": 1800
+    },
+    {
+      "id": "monitoring-sandbox-paths",
+      "title": "Health/incident: monitoring вне sandbox или пути хоста вместо workspace",
+      "journal_patterns": [
+        "Health check could not be completed",
+        "Unable to complete the health check",
+        "requested files at.*workspace/monitoring",
+        "located outside of the allowed sandbox environment",
+        "monitoring configuration files",
+        "outside the allowed sandbox",
+        "incident scan",
+        "sandbox restrictions.*monitoring"
+      ],
+      "fix": "fix-monitoring-workspace-in-sandbox.sh",
+      "cooldown_sec": 3600
+    }
+  ]
+}

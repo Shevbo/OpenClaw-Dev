@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Home — дерево и редактор</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+  <style>
+    html { font-size: 85%; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f4f4f4; color: #111; height: 100vh; display: flex; flex-direction: column; }
+    .topbar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.5rem 1rem; background: #fff; border-bottom: 1px solid #ddd; }
+    .topbar button { font: inherit; padding: 0.35rem 0.75rem; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; }
+    .topbar button:hover { background: #eee; }
+    .muted { color: #666; font-size: 0.9rem; }
+    .error { color: #b00; }
+    .main { flex: 1; display: flex; min-height: 0; min-width: 0; }
+    .sidebar { flex-shrink: 0; min-width: 160px; max-width: 90vw; width: 280px; background: #fff; border-right: 1px solid #ddd; overflow: auto; padding: 0.5rem 0.75rem; display: flex; flex-direction: column; min-height: 0; }
+    .sidebar-splitter { flex-shrink: 0; width: 7px; cursor: col-resize; background: linear-gradient(90deg, #ddd, #e8e8e8); border-left: 1px solid #ccc; border-right: 1px solid #bbb; align-self: stretch; }
+    .sidebar-splitter:hover { background: linear-gradient(90deg, #c5c5c5, #d5d5d5); }
+    .sidebar-splitter.is-dragging { background: #93c5fd; }
+    .editor-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #fafafa; }
+    #tree-search { width: 100%; font: inherit; padding: 0.35rem 0.5rem; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 0.25rem; box-sizing: border-box; }
+    #tree-search-meta { font-size: 0.75rem; margin-bottom: 0.35rem; min-height: 1em; }
+    #tree-search-results { flex: 1; min-height: 80px; overflow: auto; margin-bottom: 0.35rem; }
+    .search-results { list-style: none; padding: 0; margin: 0; font-size: 0.82rem; }
+    .search-results li { margin: 0.15rem 0; word-break: break-all; }
+    .search-results a { color: #0b57d0; text-decoration: none; }
+    .search-results a:hover { text-decoration: underline; }
+    #btn-mkdir { font: inherit; padding: 0.35rem 0.55rem; border: 1px solid #059669; border-radius: 6px; background: #ecfdf5; color: #047857; cursor: pointer; font-weight: 600; margin-bottom: 0.45rem; width: 100%; box-sizing: border-box; }
+    #btn-mkdir:hover { background: #d1fae5; }
+    #tree { flex: 1; min-height: 60px; overflow: auto; }
+    #editor-toolbar { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.45rem 0.75rem; background: #eee; border-bottom: 1px solid #ddd; }
+    .editor-toolbar-path { display: flex; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap; }
+    .editor-toolbar-path a { align-self: center; }
+    #editor-toolbar a { color: #0b57d0; }
+    .editor-toolbar-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.15rem; }
+    .editor-toolbar-actions .btn-upload-pc { font: inherit; padding: 0.35rem 0.65rem; border: 1px solid #2563eb; border-radius: 6px; background: #eff6ff; color: #1e40af; cursor: pointer; font-weight: 600; }
+    .editor-toolbar-actions .btn-upload-pc:hover { background: #dbeafe; }
+    #editor-edit-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    #current-file { font-family: ui-monospace, monospace; font-size: 0.82rem; word-break: break-all; flex: 1; min-width: 0; }
+    #editor-host { flex: 1; min-height: 200px; position: relative; }
+    #editor-host .CodeMirror { height: 100% !important; font-size: 13px; }
+    .tree-list { list-style: none; padding-left: 0.6rem; margin: 0.15rem 0; }
+    .tree-root.tree-list { padding-left: 0; }
+    .tree-label { cursor: pointer; user-select: none; font-weight: 600; color: #333; }
+    .tree-dir > ul { display: none; }
+    .tree-dir.open > ul { display: block; }
+    .tree-file a { color: #0b57d0; text-decoration: none; display: block; padding: 0.12rem 0.25rem; margin: -0.12rem -0.25rem; border-radius: 4px; outline: none; }
+    .tree-file a:hover { text-decoration: underline; }
+    .tree-dir > .tree-label { display: block; padding: 0.12rem 0.25rem; margin: -0.12rem -0.25rem; border-radius: 4px; outline: none; }
+    .tree-file.tree-row-focused > a,
+    .tree-dir.tree-row-focused > .tree-label {
+      background: linear-gradient(90deg, #2563eb22, #3b82f633);
+      box-shadow: inset 3px 0 0 #2563eb;
+      color: #0b57d0;
+      font-weight: 600;
+    }
+    .tree-row-focused { position: relative; }
+    #sidebar-tree:focus { outline: none; }
+    #sidebar-tree:focus-visible { box-shadow: inset 0 0 0 2px #93c5fd; }
+    #upload-target-hint { font-size: 0.8rem; color: #444; word-break: break-all; }
+    #save-status { font-size: 0.8rem; color: #555; }
+  </style>
+</head>
+<body data-root-prefix="/home/shevbo">
+  <div class="topbar">
+    <button type="button" id="btn-refresh-tree">Обновить дерево</button>
+    <span class="muted">Корень: <code>~</code> (<code>/links/ws/</code>) · сохранение: API (токен)</span>
+  </div>
+  <div class="main">
+    <aside class="sidebar" id="sidebar-tree" tabindex="0" aria-label="Дерево файлов" style="width:280px">
+      <div class="muted" style="margin-bottom:0.35rem">Файлы в домашнем каталоге</div>
+      <label class="muted" for="tree-search" style="font-size:0.8rem;display:block;margin-bottom:0.2rem">Поиск по пути</label>
+      <input type="search" id="tree-search" placeholder="Начните вводить имя или путь…" autocomplete="off" />
+      <div id="tree-search-meta" class="muted"></div>
+      <div id="tree-search-results" style="display:none"></div>
+      <button type="button" id="btn-mkdir" title="Внутри выбранной папки или рядом с файлом">Создать папку…</button>
+      <div id="upload-target-hint" class="muted" style="margin-bottom:0.35rem"></div>
+      <div id="tree"></div>
+    </aside>
+    <div id="sidebar-splitter" class="sidebar-splitter" role="separator" aria-orientation="vertical" aria-label="Ширина панели дерева"></div>
+    <div class="editor-pane">
+      <div id="editor-toolbar" style="display: none">
+        <div class="editor-toolbar-path">
+          <strong>Путь:</strong>
+          <code id="current-file"></code>
+          <a id="btn-download" href="#" download>Скачать</a>
+        </div>
+        <div id="editor-toolbar-actions" class="editor-toolbar-actions" style="display: none">
+          <input type="file" id="file-upload" multiple style="position:absolute;width:0;height:0;opacity:0;pointer-events:none" aria-hidden="true" tabindex="-1" />
+          <button type="button" class="btn-upload-pc" id="btn-upload">Загрузить с ПК…</button>
+          <span id="toolbar-upload-hint" class="muted" style="font-size:0.82rem"></span>
+        </div>
+        <div id="editor-edit-row" style="display: none">
+          <button type="button" id="btn-save">Сохранить</button>
+          <button type="button" id="btn-clear-token" title="Сбросить сохранённый API-токен">Сбросить токен</button>
+          <span id="save-status"></span>
+        </div>
+      </div>
+      <div id="editor-host"><textarea id="code"></textarea></div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script src="/links/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+# Rollback: workspace links page (/links/)
+
+## 1. Caddy — restore single reverse_proxy
+sudo cp /etc/caddy/Caddyfile.bak.workspace-links-20260419104950 /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+
+If backup name differs: ls /etc/caddy/Caddyfile.bak*
+
+## 2. Remove cron line
+crontab -l | grep -v gen-workspace-links | crontab -
+
+## 3. Optional cleanup
+# rm -f /home/shevbo/bin/gen-workspace-links.sh
+# sudo rm -rf /var/www/openclaw-links
+
+## Verify
+curl -sI https://claw.shectory.ru/ | head -3

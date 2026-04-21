@@ -1,0 +1,5 @@
+# Переименуйте в ingest.txt и вставьте сюда фрагмент сообщения (Telegram/лог),
+# если нужно сопоставить текст, которого нет в journalctl. После обработки можно удалить.
+#
+# Либо каталог ingest.d/*.txt — registry-runner читает все .txt (хвост каждого файла).
+# Быстро с хоста: scripts/observer/troubleshooting/append-telegram-ingest.sh 'вставьте текст'

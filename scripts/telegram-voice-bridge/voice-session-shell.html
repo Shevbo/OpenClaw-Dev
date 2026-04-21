@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenClaw — голосовая сессия</title>
+  <style>
+    :root { color-scheme: dark light; font-family: system-ui, sans-serif; }
+    body { max-width: 42rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.45; }
+    code { font-size: 0.9em; }
+    .row { margin: 1rem 0; }
+    button { padding: 0.5rem 1rem; cursor: pointer; }
+    #log { white-space: pre-wrap; background: #1112; padding: 1rem; border-radius: 8px; min-height: 6rem; font-size: 0.85rem; }
+    .warn { color: #b45309; }
+    .ok { color: #047857; }
+  </style>
+</head>
+<body>
+  <h1>Голосовой диалог (не Telegram voice)</h1>
+  <p>
+    Эта страница открывается из Telegram по кнопке и даёт браузерный доступ к микрофону.
+    Полный дуплекс с агентом подключается к <strong>медиа-каналу шлюза OpenClaw</strong> (Voice plugin / WebRTC),
+    когда в конфиге задан URL WebSocket. Пока URL не задан, идёт только проверка микрофона и статус соединения.
+  </p>
+  <div class="row">
+    <label>WebSocket медиа (из конфигурации шлюза):<br />
+      <input id="wsUrl" type="text" size="56" placeholder="wss://your-gateway/voice/media?..." style="width:100%;max-width:40rem" />
+    </label>
+  </div>
+  <div class="row">
+    <button type="button" id="btnMic">Запросить микрофон</button>
+    <button type="button" id="btnWs">Подключить WebSocket</button>
+    <button type="button" id="btnStop">Остановить</button>
+  </div>
+  <div id="log" aria-live="polite"></div>
+
+  <script>
+(function () {
+  var logEl = document.getElementById("log");
+  var wsInput = document.getElementById("wsUrl");
+  var micBtn = document.getElementById("btnMic");
+  var wsBtn = document.getElementById("btnWs");
+  var stopBtn = document.getElementById("btnStop");
+  var stream = null;
+  var ws = null;
+  var q = new URLSearchParams(location.search);
+  var fromQuery = q.get("voice_ws") || q.get("ws");
+  if (fromQuery) wsInput.value = decodeURIComponent(fromQuery);
+
+  function log(msg, cls) {
+    var span = document.createElement("span");
+    if (cls) span.className = cls;
+    span.textContent = msg + "\n";
+    logEl.appendChild(span);
+  }
+
+  micBtn.addEventListener("click", function () {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      log("Браузер не поддерживает getUserMedia (нужен HTTPS или localhost).", "warn");
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      .then(function (s) {
+        stream = s;
+        log("Микрофон разрешён.", "ok");
+      })
+      .catch(function (e) {
+        log("Микрофон: " + (e && e.message ? e.message : String(e)), "warn");
+      });
+  });
+
+  wsBtn.addEventListener("click", function () {
+    var url = (wsInput.value || "").trim();
+    if (!url) {
+      log("Укажите WebSocket URL (из настроек Voice Call Plugin / шлюза).", "warn");
+      return;
+    }
+    try {
+      if (ws) { ws.close(); ws = null; }
+      ws = new WebSocket(url);
+      ws.binaryType = "arraybuffer";
+      ws.onopen = function () { log("WebSocket: открыт.", "ok"); };
+      ws.onerror = function () { log("WebSocket: ошибка (проверьте URL, токен, CORS/прокси).", "warn"); };
+      ws.onclose = function (ev) {
+        log("WebSocket: закрыт code=" + ev.code + " reason=" + (ev.reason || ""));
+      };
+      ws.onmessage = function (ev) {
+        if (typeof ev.data === "string") log("← " + ev.data);
+      };
+    } catch (e) {
+      log("WebSocket: " + (e && e.message ? e.message : String(e)), "warn");
+    }
+  });
+
+  stopBtn.addEventListener("click", function () {
+    if (ws) { ws.close(); ws = null; }
+    if (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      stream = null;
+    }
+    log("Остановлено.");
+  });
+})();
+  </script>
+</body>
+</html>

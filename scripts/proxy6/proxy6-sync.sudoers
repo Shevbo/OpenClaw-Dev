@@ -1,0 +1,3 @@
+# Установить: sudo install -m 440 proxy6-sync.sudoers /etc/sudoers.d/proxy6-sync
+# Проверка: sudo visudo -cf /etc/sudoers.d/proxy6-sync
+shevbo ALL=(root) NOPASSWD: /usr/local/sbin/sync-proxy6-system-env.sh

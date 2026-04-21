@@ -1,0 +1,4 @@
+# visudo -cf /etc/sudoers.d/openclaw-observer
+# Наблюдатель: caddy при EADDRINUSE; reboot только при OBSERVER_ALLOW_REBOOT=1
+shevbo ALL=(root) NOPASSWD: /usr/bin/systemctl restart caddy
+shevbo ALL=(root) NOPASSWD: /usr/sbin/reboot

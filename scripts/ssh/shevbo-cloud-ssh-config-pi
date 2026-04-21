@@ -1,0 +1,10 @@
+# Фрагмент для ~/.ssh/config на shevbo-cloud
+# 1) Замени HostName на реальный адрес Pi: Tailscale (100.x), локальная сеть через VPN, публичный IP и т.д.
+# 2) При другом пользователе на Pi — поменяй User
+
+Host shevbo-pi
+  HostName 192.0.2.1
+  User shevbo
+  IdentityFile ~/.ssh/id_ed25519_shevbo_pi
+  IdentitiesOnly yes
+  StrictHostKeyChecking accept-new

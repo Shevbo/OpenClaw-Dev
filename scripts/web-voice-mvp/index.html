@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Voice MVP — браузер + WebSocket</title>
+  <style>
+    :root { color-scheme: dark light; font-family: system-ui, sans-serif; }
+    body { max-width: 46rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    code { font-size: 0.88em; word-break: break-all; }
+    .row { margin: 1rem 0; }
+    button { padding: 0.45rem 0.9rem; margin-right: 0.5rem; cursor: pointer; }
+    #log {
+      white-space: pre-wrap;
+      background: #1112;
+      padding: 1rem;
+      border-radius: 8px;
+      min-height: 5rem;
+      font-size: 0.82rem;
+    }
+    .warn { color: #b45309; }
+    .ok { color: #047857; }
+    details.rf {
+      border: 1px solid #8884;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin: 1.25rem 0;
+      background: #8881;
+    }
+    details.rf summary { cursor: pointer; font-weight: 600; }
+    details.rf ul { margin: 0.5rem 0 0 1rem; padding: 0; }
+    input[type="text"] { width: 100%; max-width: 44rem; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <h1>Voice MVP (только веб)</h1>
+  <p>
+    Минимальная проверка: <strong>микрофон в браузере</strong> и <strong>WebSocket</strong> к вашему шлюзу
+    (например медиа-эндпоинт Voice plugin OpenClaw). Полный голосовой пайплайн (STT, агент, TTS)
+    задаётся на сервере; эта страница не подключает Telegram.
+  </p>
+
+  <details class="rf" open>
+    <summary>Достижимость с учётом геополитики (РФ) — что проверить самим</summary>
+    <p style="margin:0.5rem 0 0 0;font-size:0.92rem">
+      Ниже не юридическая консультация: политики провайдеров и санкционные режимы меняются.
+      Перед продом сверяйтесь с актуальными условиями и с поддержкой выбранного вендора.
+    </p>
+    <ul>
+      <li>
+        <strong>Телефония (Twilio / Telnyx / Plivo)</strong>: исходящие/входящие в РФ и номера +7
+        часто зависят от <em>гео-разрешений</em> аккаунта, верификации бизнеса и маршрутизации;
+        часть направлений может быть недоступна или требовать отдельного согласования.
+      </li>
+      <li>
+        <strong>Оплата и юрлицо</strong>: биллинг в рублях, карты РФ и контрагенты РФ у зарубежных
+        облаков и SaaS могут быть ограничены; иногда нужен договор через резидента ЕАЭС/другой юрсдикции.
+      </li>
+      <li>
+        <strong>Облачные API (в т.ч. Google Gemini для STT/TTS)</strong>: доступность с IP РФ,
+        способы оплаты и требования к аккаунту менялись; закладывайте резервный сценарий
+        (VPN не для обхода санкций, а для диагностики) и чёткий контрактный канал с вендором.
+      </li>
+      <li>
+        <strong>Хостинг шлюза</strong>: VPS вне РФ обычно доступен пользователям из РФ по HTTPS/WSS;
+        наоборот — сервер в РФ и зарубежные API — проверяйте задержку и соответствие требованиям к данным.
+      </li>
+      <li>
+        <strong>Сетевые ограничения</strong>: корпоративные файрволы или редкие блокировки портов/доменов
+        могут мешать <code>wss://</code>; это не «голос как в Telegram», а обычный веб-трафик.
+      </li>
+    </ul>
+    <p style="margin:0.75rem 0 0 0;font-size:0.92rem">
+      <strong>Вывод для MVP:</strong> проверить с территории РФ можно уже сейчас —
+      открыть эту страницу по HTTPS (или <code>http://127.0.0.1</code> локально), дать микрофон,
+      подключить <code>wss://</code> к вашему шлюзу. Отдельно — пилот PSTN на +7 только после
+      явного подтверждения у телефонного провайдера.
+    </p>
+  </details>
+
+  <div class="row">
+    <label for="wsUrl">WebSocket (медиа или сигналинг шлюза):</label><br />
+    <input id="wsUrl" type="text" placeholder="wss://gateway.example/voice/..." autocomplete="off" />
+  </div>
+  <div class="row">
+    <button type="button" id="btnMic">Микрофон</button>
+    <button type="button" id="btnWs">WebSocket</button>
+    <button type="button" id="btnStop">Стоп</button>
+  </div>
+  <div id="log" aria-live="polite"></div>
+
+  <script>
+(function () {
+  var logEl = document.getElementById("log");
+  var wsInput = document.getElementById("wsUrl");
+  var stream = null;
+  var ws = null;
+  var q = new URLSearchParams(location.search);
+  var pre = q.get("ws") || q.get("voice_ws");
+  if (pre) wsInput.value = decodeURIComponent(pre);
+
+  function log(msg, cls) {
+    var span = document.createElement("span");
+    if (cls) span.className = cls;
+    span.textContent = msg + "\n";
+    logEl.appendChild(span);
+  }
+
+  document.getElementById("btnMic").addEventListener("click", function () {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      log("Нет getUserMedia (нужен HTTPS или localhost).", "warn");
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      .then(function (s) {
+        stream = s;
+        log("Микрофон: доступ разрешён.", "ok");
+      })
+      .catch(function (e) {
+        log("Микрофон: " + (e && e.message ? e.message : String(e)), "warn");
+      });
+  });
+
+  document.getElementById("btnWs").addEventListener("click", function () {
+    var url = (wsInput.value || "").trim();
+    if (!url) {
+      log("Укажите wss:// URL.", "warn");
+      return;
+    }
+    try {
+      if (ws) { ws.close(); ws = null; }
+      ws = new WebSocket(url);
+      ws.binaryType = "arraybuffer";
+      ws.onopen = function () { log("WebSocket: соединение открыто.", "ok"); };
+      ws.onerror = function () { log("WebSocket: ошибка (URL, токен, TLS, прокси).", "warn"); };
+      ws.onclose = function (ev) {
+        log("WebSocket: закрыто, code=" + ev.code + " reason=" + (ev.reason || ""));
+      };
+      ws.onmessage = function (ev) {
+        if (typeof ev.data === "string") log("← " + ev.data);
+        else if (ev.data && ev.data.byteLength) log("← binary " + ev.data.byteLength + " B");
+      };
+    } catch (e) {
+      log("WebSocket: " + (e && e.message ? e.message : String(e)), "warn");
+    }
+  });
+
+  document.getElementById("btnStop").addEventListener("click", function () {
+    if (ws) { ws.close(); ws = null; }
+    if (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      stream = null;
+    }
+    log("Остановлено.");
+  });
+})();
+  </script>
+</body>
+</html>
