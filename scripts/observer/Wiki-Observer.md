@@ -85,7 +85,7 @@ systemctl --user enable --now openclaw-observer.timer
 
 ## Связанные документы
 
-- `~/.openclaw/Wiki/Caddy.md` — reverse proxy, TLS, откат `Caddyfile`, Proxy6 и **caddy**.
+- `~/.openclaw/Wiki/Caddy.md` — reverse proxy, TLS, откат `Caddyfile`, Proxy6 и **caddy**. Оглавление вики: `~/.openclaw/Wiki/Wiki-INDEX.md`.
 
 ## Ограничения
 

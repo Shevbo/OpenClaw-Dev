@@ -1,10 +1,10 @@
 ---
-description: Каноническая вики OpenClaw на прод-шлюзе (shevbo-cloud)
+description: Вся операционная документация OpenClaw на шлюзе ~/.openclaw/Wiki
 alwaysApply: true
 ---
 
-# Вики на шлюзе
+# Документация только в вики шлюза
 
-- **Операционная документация** (процедуры, описания, чек-листы для OpenClaw на проде): писать и хранить в **`/home/shevbo/.openclaw/Wiki/`** на шлюзе (пользователь `shevbo`, хост `shevbo-cloud`).
-- После правок выкладывать файлы на VPS; в репозитории дублировать в **`scripts/wiki/`** для Git.
-- Не считать каноном только черновики в чате — **источник правды на шлюзе**: **`~/.openclaw/Wiki/`**.
+- **Канон:** `/home/shevbo/.openclaw/Wiki/` на **`shevbo-cloud`** (`shevbo`). Оглавление: **`Wiki-INDEX.md`**.
+- Туда перенесены контексты: **CONTINUATION-CONTEXT**, **AGENT-CONTEXT**, **cursor-handoff**, **AGENTS**, **scripts/wiki/***, **Wiki-Observer**, **troubleshooting GUIDE** (как `Wiki-OBSERVER-TROUBLESHOOTING-GUIDE.md`).
+- **Править и дополнять** в первую очередь там; в репозитории — зеркало: **`bash scripts/openclaw/sync-wiki-from-gateway.sh`** после правок на VPS, **`sync-wiki-to-gateway.sh`** — выкладка из репо на шлюз.

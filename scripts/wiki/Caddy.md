@@ -97,13 +97,13 @@ curl -sSI "https://claw.shectory.ru/" | head -5
 
 ## Наблюдатель (observer)
 
-Внешний скрипт `openclaw-observer` при паттерне **`EADDRINUSE`** в логах шлюза может перезапускать **caddy** и шлюз (см. `~/.openclaw/Wiki/Observer.md`). Для `systemctl restart caddy` пользователю **shevbo** выдан **NOPASSWD** в `/etc/sudoers.d/openclaw-observer`.
+Внешний скрипт `openclaw-observer` при паттерне **`EADDRINUSE`** в логах шлюза может перезапускать **caddy** и шлюз (см. `~/.openclaw/Wiki/Wiki-Observer.md`). Для `systemctl restart caddy` пользователю **shevbo** выдан **NOPASSWD** в `/etc/sudoers.d/openclaw-observer`.
 
 ---
 
 ## Связанные документы
 
-- `~/.openclaw/Wiki/Observer.md` — healthcheck, прокси, Telegram.
+- `~/.openclaw/Wiki/Wiki-Observer.md` — healthcheck, прокси, Telegram.
 - В репозитории: `AGENT-CONTEXT-OpenClaw-Caddy-Developer.md` — контекст для агентов (задачи, безопасность, шаблоны).
 
 ---

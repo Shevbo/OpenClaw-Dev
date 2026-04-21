@@ -1,5 +1,7 @@
 # Реестр сбоев OpenClaw + observer (авто-исправления)
 
+**Канон на шлюзе (копия для операторов):** `/home/shevbo/.openclaw/Wiki/Wiki-OBSERVER-TROUBLESHOOTING-GUIDE.md` — при правках синхронизировать с репозиторием (`scripts/openclaw/sync-wiki-from-gateway.sh` / `sync-wiki-to-gateway.sh`). См. **`Wiki-INDEX.md`** в `~/.openclaw/Wiki/`.
+
 Цель: накопленные типовые ошибки, **команды восстановления** и **автозапуск** через `openclaw-observer.sh` по совпадению паттернов в журнале шлюза.
 
 ## Размещение на сервере

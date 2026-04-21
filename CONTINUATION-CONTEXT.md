@@ -2,6 +2,8 @@
 
 Цель этого файла: **не дублировать уже сделанное** — зафиксировать архитектуру, политики, пути, скрипты и открытые хвосты. Репозиторий: **OpenClaw-Dev** (`main`), рабочая копия на **`shectory-work`**: `~/workspaces/openclaw`. Секреты и значения токенов **не** хранить здесь.
 
+**Каноническая копия этого файла на шлюзе:** `/home/shevbo/.openclaw/Wiki/CONTINUATION-CONTEXT.md` — при расхождении править там, затем **`bash scripts/openclaw/sync-wiki-from-gateway.sh`** (или выкладка из репо: **`sync-wiki-to-gateway.sh`**). Оглавление всех материалов: **`Wiki-INDEX.md`** в том же каталоге.
+
 ---
 
 ## 1. Архитектура (один раз)
@@ -47,7 +49,7 @@
 
 ### Репозиторий и вики
 
-- **Канон операционной документации на шлюзе:** **`/home/shevbo/.openclaw/Wiki/`** (пользователь **`shevbo`**). Все новые/обновлённые статьи и описания процедур — **сначала или одновременно там**; в репозитории каталог **`scripts/wiki/`** — **зеркало для Git** (после правок синхронизировать: `scp scripts/wiki/*.md shevbo-cloud:~/.openclaw/Wiki/` или точечно по файлам). Системный контекст для агента: **`AGENTS.md`**, правило **`.cursor/rules/openclaw-gateway-wiki.mdc`**.
+- **Канон операционной документации на шлюзе:** **`/home/shevbo/.openclaw/Wiki/`** (пользователь **`shevbo`**). Туда перенесены **все** материалы: **`Wiki-INDEX.md`**, контексты (**`CONTINUATION-CONTEXT.md`**, **`AGENT-CONTEXT-…`**, **`cursor-handoff-…`**, **`AGENTS.md`**), **`scripts/wiki/*`**, **`Wiki-Observer.md`**, **`Wiki-OBSERVER-TROUBLESHOOTING-GUIDE.md`**. В репозитории — **зеркало для Git**; синхронизация: **`scripts/openclaw/sync-wiki-to-gateway.sh`** / **`sync-wiki-from-gateway.sh`**. Системный контекст агента: **`AGENTS.md`**, **`.cursor/rules/openclaw-gateway-wiki.mdc`**.
 - Скрипты в **`scripts/`**, handoff: **`cursor-handoff-openclaw-shevbo-cloud.md`**, **`AGENT-CONTEXT-OpenClaw-Caddy-Developer.md`**.
 - **Голосовой веб-MVP** в репо: **`scripts/web-voice-mvp/`** (**`voice_backend.py`** ~**8091**, **`serve_mvp.py`** ~**8765**, **`requirements-voice-mvp.txt`**, **`legacy-ws-mic.html`**), **`scripts/Caddyfile.voice-mvp.snippet`**. Вспомогательно: **`scripts/telegram-voice-bridge/`** (не обязательный путь MVP).
 - **SSH Windows**: **`scripts/ssh/ssh-passwordless-setup.ps1`** (прокси Gallery, Proxy6, **`curl --proxy-user`**); локальная копия вне репо могла быть **`c:\dev\ssh-passwordless-setup.ps1`** / **`c:\dev\p.txt`** — ориентир репо.
@@ -80,8 +82,8 @@
 
 | Область | Пути |
 |----------|------|
-| Инструкции агента (Cursor) | **`AGENTS.md`**, **`.cursor/rules/openclaw-gateway-wiki.mdc`** |
-| OpenClaw cloud/Pi | **`scripts/openclaw/*.sh`**, **`patch-tools-media-audio-google-only.py`**, **`patch-openclaw-throughput-mitigation.py`**, **`openclaw-gateway-via-docker-group.sh`**, **`sync-telegram-proxy-from-proxy6-env.py`**, **`patch-enable-nodes-sandbox-tool.py`**, **`patch-openclaw-dev-full-access.py`**, **`patch-agent-alsoallow-google-direct-runtime.py`**, **`openclaw-gateway.service.d-*.conf`** |
+| Инструкции агента (Cursor) | **`AGENTS.md`**, **`.cursor/rules/openclaw-gateway-wiki.mdc`**; синхронизация вики: **`scripts/openclaw/sync-wiki-to-gateway.sh`**, **`scripts/openclaw/sync-wiki-from-gateway.sh`** |
+| OpenClaw cloud/Pi | **`scripts/openclaw/*.sh`**, **`sync-wiki-to-gateway.sh`**, **`sync-wiki-from-gateway.sh`**, **`patch-tools-media-audio-google-only.py`**, **`patch-openclaw-throughput-mitigation.py`**, **`openclaw-gateway-via-docker-group.sh`**, **`sync-telegram-proxy-from-proxy6-env.py`**, **`patch-enable-nodes-sandbox-tool.py`**, **`patch-openclaw-dev-full-access.py`**, **`patch-agent-alsoallow-google-direct-runtime.py`**, **`openclaw-gateway.service.d-*.conf`** |
 | Вики на шлюзе (канон) | **`/home/shevbo/.openclaw/Wiki/`**; зеркало в репо: **`scripts/wiki/*.md`** |
 | Observer | **`scripts/observer/openclaw-observer.sh`**, **`.service`**, **`.timer`**, **`Wiki-Observer.md`**, **`troubleshooting/*`** |
 | Прокси | **`scripts/proxy6/*`** (`sync-proxy6-system-env.sh`, `verify-shevbo-proxy-egress.sh`, `install-openclaw-gateway-proxy-dropin.sh`) |
@@ -106,8 +108,8 @@ ssh shevbo-cloud 'chmod +x ~/bin/openclaw-observer.sh && sed -i "s/\r$//" ~/bin/
 scp scripts/openclaw/*.sh shevbo-cloud:~/bin/
 ssh shevbo-cloud 'chmod +x ~/bin/*.sh; sed -i "s/\r$//" ~/bin/*.sh'
 
-# Вики на VPS
-scp scripts/wiki/*.md shevbo-cloud:~/.openclaw/Wiki/
+# Вся вики и контексты на шлюз (канон)
+bash scripts/openclaw/sync-wiki-to-gateway.sh
 
 # Шлюз после правок конфига / drop-in
 ssh shevbo-cloud 'systemctl --user daemon-reload && systemctl --user restart openclaw-gateway.service'

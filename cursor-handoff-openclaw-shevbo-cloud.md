@@ -2,7 +2,7 @@
 
 Контекст для продолжения в Cursor с **этой точки**. Пользователь: **shevbo** на VPS; домен: **shectory.ru** (план: поддомен **claw.shectory.ru**).
 
-**Вики на шлюзе (канон):** **`/home/shevbo/.openclaw/Wiki/`** — туда писать операционные документы; **`scripts/wiki/`** в репо — зеркало для Git. См. **`AGENTS.md`**.
+**Вики на шлюзе (канон):** **`/home/shevbo/.openclaw/Wiki/`** — там же **все** контексты (**`Wiki-INDEX.md`**, **`CONTINUATION-CONTEXT.md`**, handoff-файлы и т.д.); **`scripts/wiki/`** и корневые `*.md` в репо — зеркало для Git. Синхронизация: **`scripts/openclaw/sync-wiki-to-gateway.sh`** / **`sync-wiki-from-gateway.sh`**. См. **`AGENTS.md`**.
 
 ---
 

@@ -1,15 +1,35 @@
 # OpenClaw-Dev — инструкции для агента (workspace)
 
-## Каноническая вики на шлюзе
+## Где живут документы и контексты (канон)
 
-**Все операционные документы, описания процедур, чек-листы и пояснения для эксплуатации OpenClaw на прод-шлюзе** пишем и ведём **на VPS в каталоге вики шлюза**:
+**Все** операционные материалы, handoff-контексты, вики и длинные описания для прод-OpenClaw ведём **на шлюзе** в каталоге:
 
 **`/home/shevbo/.openclaw/Wiki/`**
 
-(SSH alias: `shevbo-cloud`, пользователь `shevbo`.)
+(SSH: **`shevbo-cloud`**, пользователь **`shevbo`**. Полный список файлов — **`Wiki-INDEX.md`** в том же каталоге.)
 
-- После создания или правки статьи **обновляйте файлы на шлюзе** (например `scp scripts/wiki/<файл>.md shevbo-cloud:/home/shevbo/.openclaw/Wiki/` или синхронизация всего каталога `scripts/wiki/*.md`).
-- Каталог **`scripts/wiki/`** в репозитории — **зеркало для Git**: дублируйте туда же содержимое при значимых правках, чтобы история и ревью оставались в репо.
-- Не дублируйте длинные операционные гайды только в чате или в разрозненных `.md` вне вики — **источник правды для операторов на шлюзе** — **`~/.openclaw/Wiki/`**.
+### Состав вики (кратко)
 
-Подробности путей и деплоя: **`CONTINUATION-CONTEXT.md`** (раздел про репозиторий и вики), handoff: **`AGENT-CONTEXT-OpenClaw-Caddy-Developer.md`**.
+| На шлюзе `Wiki/` | Смысл |
+|-------------------|--------|
+| `Wiki-INDEX.md` | Оглавление всех материалов |
+| `CONTINUATION-CONTEXT.md` | Архитектура, сделано, хвосты, проверки |
+| `AGENT-CONTEXT-OpenClaw-Caddy-Developer.md` | Handoff: OpenClaw + Caddy + VPS |
+| `cursor-handoff-openclaw-shevbo-cloud.md` | Короткий handoff по шлюзу |
+| `AGENTS.md` | Этот же файл (копия для агента на сервере) |
+| `Caddy.md`, `OpenClaw-*.md`, `SSH-*.md` | Инфраструктура, голос, Pi, SSH |
+| `Wiki-Observer.md` | Observer, healthcheck, Telegram |
+| `Wiki-OBSERVER-TROUBLESHOOTING-GUIDE.md` | Реестр сбоев и авто-fix |
+
+### Репозиторий Git
+
+Каталог **`scripts/wiki/`** и корневые **`CONTINUATION-CONTEXT.md`**, **`AGENT-CONTEXT-*.md`**, **`cursor-handoff-*.md`** — **зеркало для истории в Git**. При расхождении **приоритет у файлов на шлюзе** (`~/.openclaw/Wiki/`).
+
+### Синхронизация (из корня репо)
+
+```bash
+bash scripts/openclaw/sync-wiki-to-gateway.sh    # репо → шлюз (после правок локально)
+bash scripts/openclaw/sync-wiki-from-gateway.sh  # шлюз → репо (после правок на VPS)
+```
+
+Не создавайте новые «источники правды» только в чате или в случайных `.md` вне вики — добавляйте файл в **`/home/shevbo/.openclaw/Wiki/`**, строку в **`Wiki-INDEX.md`**, затем синхронизируйте в репо и коммит.
