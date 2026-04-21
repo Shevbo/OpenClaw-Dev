@@ -43,6 +43,26 @@
 
 ---
 
+## Интенсивная нагрузка и «Agent couldn't generate… (tool actions may have already been executed)»
+
+**Что это:** в embedded-раннере OpenClaw сообщение с *«some tool actions may have already been executed»* появляется, когда ход завершился **некорректно** (пустой/обрезанный ответ ассистента, `stopReason=error`, таймаут и т.п.), но **уже выполнились** потенциально изменяющие контекст действия — в том числе отправка в чат или **TTS**. Это не отдельная ошибка «два потока дернули один mutex TTS»: причина чаще **конкуренция по квоте/таймаутам LLM+инструменты**, плюс параллельные cron/медиа.
+
+**Очередь TTS «по моделям» внутри Google:** в **`extensions/speech-core/runtime-api.js`** `synthesizeSpeech` перебирает **провайдеры** (`google` → следующий зарегистрированный), а не несколько моделей Gemini подряд при одном провайдере `google`. При **«только Google»** и отключённом `microsoft` второго провайдера нет — **авто-fallback на другую Gemini TTS-модель без смены конфига не делается**.
+
+**Что реально помогает без форка OpenClaw:**
+
+| Мера | Поле | Смысл |
+|------|------|--------|
+| Меньше параллельных cron-ранов | `cron.maxConcurrentRuns` | **1** — не копить agentTurn из cron в один момент. |
+| Меньше параллельного media | `tools.media.concurrency` | **1** — меньше одновременных STT/картинок/видео understanding на ход. |
+| Сгладить всплески Telegram | `messages.queue.debounceMsByChannel.telegram` | **≥ 400 ms** — чуть реже стартовать новый ход на лавину сообщений. |
+
+Готовый скрипт в репозитории: **`scripts/openclaw/patch-openclaw-throughput-mitigation.py`** (затем validate + restart шлюза).
+
+Дополнительно: следить за **503/429** в `journalctl` по LLM и TTS; при узких лимитах на **Gemini 3.1 Flash TTS** можно временно поставить в конфиге **`gemini-2.5-flash-preview-tts`** как более предсказуемый ответ `inlineData`.
+
+---
+
 ## Секреты
 
 Ключ Google: `GEMINI_API_KEY` / `GOOGLE_API_KEY` или файл, на который ссылается **`secrets.providers.google`** / профиль **`google:default`**.
@@ -54,8 +74,9 @@
 ## Применение на сервере
 
 1. Скрипт **`scripts/openclaw/patch-tools-media-audio-google-only.py`** (на хосте: `python3 …` из каталога со скриптом или с копией в `~/bin`).
-2. **`openclaw config validate`**
-3. **`systemctl --user restart openclaw-gateway.service`**
+2. При пиках нагрузки — **`scripts/openclaw/patch-openclaw-throughput-mitigation.py`** (cron + media concurrency + debounce Telegram).
+3. **`openclaw config validate`**
+4. **`systemctl --user restart openclaw-gateway.service`**
 
 Обёртку шлюза с `sg docker` деплоить в **`~/bin/`** (или путь из unit) и перезапускать unit.
 
