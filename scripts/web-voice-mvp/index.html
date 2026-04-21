@@ -3,101 +3,90 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Voice MVP — браузер + WebSocket</title>
+  <meta name="voice-api-base" content="" />
+  <title>Голосовой чат (Google STT + Google TTS)</title>
   <style>
     :root { color-scheme: dark light; font-family: system-ui, sans-serif; }
-    body { max-width: 46rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
-    code { font-size: 0.88em; word-break: break-all; }
+    body { max-width: 44rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    code { font-size: 0.86em; word-break: break-all; }
+    .ptt {
+      display: inline-block;
+      padding: 1rem 1.5rem;
+      margin: 0.5rem 0;
+      border-radius: 12px;
+      border: 2px solid #047857;
+      background: #04785722;
+      cursor: pointer;
+      user-select: none;
+      font-size: 1.05rem;
+    }
+    .ptt:active, .ptt.recording { background: #b91c1c33; border-color: #b91c1c; }
     .row { margin: 1rem 0; }
-    button { padding: 0.45rem 0.9rem; margin-right: 0.5rem; cursor: pointer; }
     #log {
       white-space: pre-wrap;
       background: #1112;
       padding: 1rem;
       border-radius: 8px;
-      min-height: 5rem;
-      font-size: 0.82rem;
+      min-height: 6rem;
+      font-size: 0.85rem;
     }
     .warn { color: #b45309; }
     .ok { color: #047857; }
-    details.rf {
-      border: 1px solid #8884;
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
-      margin: 1.25rem 0;
-      background: #8881;
-    }
-    details.rf summary { cursor: pointer; font-weight: 600; }
-    details.rf ul { margin: 0.5rem 0 0 1rem; padding: 0; }
-    input[type="text"] { width: 100%; max-width: 44rem; box-sizing: border-box; }
+    .hint { font-size: 0.9rem; opacity: 0.9; }
+    a { color: inherit; }
   </style>
 </head>
 <body>
-  <h1>Voice MVP (только веб)</h1>
-  <p>
-    Минимальная проверка: <strong>микрофон в браузере</strong> и <strong>WebSocket</strong> к вашему шлюзу
-    (например медиа-эндпоинт Voice plugin OpenClaw). Полный голосовой пайплайн (STT, агент, TTS)
-    задаётся на сервере; эта страница не подключает Telegram.
+  <h1>Голос вместо чата (веб)</h1>
+  <p class="hint">
+    Удерживайте кнопку, говорите, отпустите — фраза уходит на сервер:
+    <strong>Google Speech-to-Text</strong> → текст ответа (заглушка или ваш <code>AGENT_URL</code>) →
+    <strong>Google Text-to-Speech</strong> (MP3) → воспроизведение в динамиках.
+    Телеграм и телефония не используются.
+  </p>
+  <p class="hint">
+    Локальная отладка: статика на порту 8765, API на 8091 —
+    откройте с параметром <code>?api=http://127.0.0.1:8091</code>.
+    За Caddy — один хост: см. <code>scripts/Caddyfile.voice-mvp.snippet</code>.
+    Старый тест WebSocket: <a href="legacy-ws-mic.html">legacy-ws-mic.html</a>.
   </p>
 
-  <details class="rf" open>
-    <summary>Достижимость с учётом геополитики (РФ) — что проверить самим</summary>
-    <p style="margin:0.5rem 0 0 0;font-size:0.92rem">
-      Ниже не юридическая консультация: политики провайдеров и санкционные режимы меняются.
-      Перед продом сверяйтесь с актуальными условиями и с поддержкой выбранного вендора.
-    </p>
-    <ul>
-      <li>
-        <strong>Телефония (Twilio / Telnyx / Plivo)</strong>: исходящие/входящие в РФ и номера +7
-        часто зависят от <em>гео-разрешений</em> аккаунта, верификации бизнеса и маршрутизации;
-        часть направлений может быть недоступна или требовать отдельного согласования.
-      </li>
-      <li>
-        <strong>Оплата и юрлицо</strong>: биллинг в рублях, карты РФ и контрагенты РФ у зарубежных
-        облаков и SaaS могут быть ограничены; иногда нужен договор через резидента ЕАЭС/другой юрсдикции.
-      </li>
-      <li>
-        <strong>Облачные API (в т.ч. Google Gemini для STT/TTS)</strong>: доступность с IP РФ,
-        способы оплаты и требования к аккаунту менялись; закладывайте резервный сценарий
-        (VPN не для обхода санкций, а для диагностики) и чёткий контрактный канал с вендором.
-      </li>
-      <li>
-        <strong>Хостинг шлюза</strong>: VPS вне РФ обычно доступен пользователям из РФ по HTTPS/WSS;
-        наоборот — сервер в РФ и зарубежные API — проверяйте задержку и соответствие требованиям к данным.
-      </li>
-      <li>
-        <strong>Сетевые ограничения</strong>: корпоративные файрволы или редкие блокировки портов/доменов
-        могут мешать <code>wss://</code>; это не «голос как в Telegram», а обычный веб-трафик.
-      </li>
-    </ul>
-    <p style="margin:0.75rem 0 0 0;font-size:0.92rem">
-      <strong>Вывод для MVP:</strong> проверить с территории РФ можно уже сейчас —
-      открыть эту страницу по HTTPS (или <code>http://127.0.0.1</code> локально), дать микрофон,
-      подключить <code>wss://</code> к вашему шлюзу. Отдельно — пилот PSTN на +7 только после
-      явного подтверждения у телефонного провайдера.
-    </p>
-  </details>
+  <div
+    class="ptt"
+    id="ptt"
+    tabindex="0"
+    role="button"
+    aria-pressed="false"
+    title="Удерживайте и говорите"
+  >Удерживайте — говорите</div>
 
   <div class="row">
-    <label for="wsUrl">WebSocket (медиа или сигналинг шлюза):</label><br />
-    <input id="wsUrl" type="text" placeholder="wss://gateway.example/voice/..." autocomplete="off" />
-  </div>
-  <div class="row">
-    <button type="button" id="btnMic">Микрофон</button>
-    <button type="button" id="btnWs">WebSocket</button>
-    <button type="button" id="btnStop">Стоп</button>
+    <span id="status">Микрофон не запрошен.</span>
   </div>
   <div id="log" aria-live="polite"></div>
 
   <script>
 (function () {
+  var ptt = document.getElementById("ptt");
+  var statusEl = document.getElementById("status");
   var logEl = document.getElementById("log");
-  var wsInput = document.getElementById("wsUrl");
-  var stream = null;
-  var ws = null;
-  var q = new URLSearchParams(location.search);
-  var pre = q.get("ws") || q.get("voice_ws");
-  if (pre) wsInput.value = decodeURIComponent(pre);
+
+  function apiBase() {
+    var q = new URLSearchParams(location.search).get("api");
+    if (q) return q.replace(/\/+$/, "");
+    var meta = document.querySelector('meta[name="voice-api-base"]');
+    if (meta && meta.getAttribute("content")) return meta.getAttribute("content").replace(/\/+$/, "");
+    var path = location.pathname;
+    if (path.endsWith("/")) path = path.slice(0, -1);
+    var slash = path.lastIndexOf("/");
+    if (slash > 0) return path.slice(0, slash);
+    return "";
+  }
+
+  function turnUrl() {
+    var b = apiBase();
+    return (b ? b : "") + "/api/voice/turn";
+  }
 
   function log(msg, cls) {
     var span = document.createElement("span");
@@ -106,52 +95,165 @@
     logEl.appendChild(span);
   }
 
-  document.getElementById("btnMic").addEventListener("click", function () {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      log("Нет getUserMedia (нужен HTTPS или localhost).", "warn");
-      return;
+  function floatToInt16Chunks(buffers) {
+    var total = 0;
+    for (var i = 0; i < buffers.length; i++) total += buffers[i].length;
+    var out = new Int16Array(total);
+    var o = 0;
+    for (var i = 0; i < buffers.length; i++) {
+      var b = buffers[i];
+      for (var j = 0; j < b.length; j++) {
+        var s = Math.max(-1, Math.min(1, b[j]));
+        out[o++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
     }
-    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-      .then(function (s) {
-        stream = s;
-        log("Микрофон: доступ разрешён.", "ok");
-      })
-      .catch(function (e) {
-        log("Микрофон: " + (e && e.message ? e.message : String(e)), "warn");
-      });
-  });
+    return out;
+  }
 
-  document.getElementById("btnWs").addEventListener("click", function () {
-    var url = (wsInput.value || "").trim();
-    if (!url) {
-      log("Укажите wss:// URL.", "warn");
-      return;
-    }
+  function int16ToBase64(arr) {
+    var u8 = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+    var bin = "";
+    for (var i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+    return btoa(bin);
+  }
+
+  var mediaStream = null;
+  var ctx = null;
+  var sourceNode = null;
+  var processor = null;
+  var gainNode = null;
+  var pcmChunks = [];
+  var recording = false;
+
+  function stopGraph() {
     try {
-      if (ws) { ws.close(); ws = null; }
-      ws = new WebSocket(url);
-      ws.binaryType = "arraybuffer";
-      ws.onopen = function () { log("WebSocket: соединение открыто.", "ok"); };
-      ws.onerror = function () { log("WebSocket: ошибка (URL, токен, TLS, прокси).", "warn"); };
-      ws.onclose = function (ev) {
-        log("WebSocket: закрыто, code=" + ev.code + " reason=" + (ev.reason || ""));
-      };
-      ws.onmessage = function (ev) {
-        if (typeof ev.data === "string") log("← " + ev.data);
-        else if (ev.data && ev.data.byteLength) log("← binary " + ev.data.byteLength + " B");
-      };
-    } catch (e) {
-      log("WebSocket: " + (e && e.message ? e.message : String(e)), "warn");
-    }
-  });
+      if (processor) { processor.disconnect(); processor.onaudioprocess = null; processor = null; }
+      if (gainNode) { gainNode.disconnect(); gainNode = null; }
+      if (sourceNode) { sourceNode.disconnect(); sourceNode = null; }
+      if (ctx) { ctx.close(); ctx = null; }
+    } catch (e) { /* ignore */ }
+  }
 
-  document.getElementById("btnStop").addEventListener("click", function () {
-    if (ws) { ws.close(); ws = null; }
-    if (stream) {
-      stream.getTracks().forEach(function (t) { t.stop(); });
-      stream = null;
+  async function ensureMic() {
+    if (mediaStream) return mediaStream;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("Нет getUserMedia (нужен HTTPS или localhost).");
     }
-    log("Остановлено.");
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    statusEl.textContent = "Микрофон активен.";
+    return mediaStream;
+  }
+
+  function startCapture() {
+    pcmChunks = [];
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    sourceNode = ctx.createMediaStreamSource(mediaStream);
+    processor = ctx.createScriptProcessor(4096, 1, 1);
+    gainNode = ctx.createGain();
+    gainNode.gain.value = 0;
+    processor.onaudioprocess = function (ev) {
+      if (!recording) return;
+      var ch0 = ev.inputBuffer.getChannelData(0);
+      pcmChunks.push(new Float32Array(ch0));
+    };
+    sourceNode.connect(processor);
+    processor.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    recording = true;
+  }
+
+  async function sendTurn(sampleRate, base64pcm) {
+    var url = turnUrl();
+    var headers = { "Content-Type": "application/json" };
+    var sec = new URLSearchParams(location.search).get("voice_secret");
+    if (sec) headers["X-Voice-Api-Secret"] = sec;
+    var res = await fetch(url, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({
+        pcm16_base64: base64pcm,
+        sampleRateHertz: sampleRate,
+        languageCode: "ru-RU",
+      }),
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      throw new Error(data.error || res.statusText || String(res.status));
+    }
+    return data;
+  }
+
+  function playMp3Base64(b64) {
+    var bin = atob(b64);
+    var u8 = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    var blob = new Blob([u8], { type: "audio/mpeg" });
+    var u = URL.createObjectURL(blob);
+    var a = new Audio(u);
+    a.onended = function () { URL.revokeObjectURL(u); };
+    return a.play();
+  }
+
+  async function endCaptureAndSend() {
+    recording = false;
+    var sr = ctx ? ctx.sampleRate : 48000;
+    stopGraph();
+    if (!pcmChunks.length) {
+      log("Слишком коротко.", "warn");
+      return;
+    }
+    var int16 = floatToInt16Chunks(pcmChunks);
+    if (int16.length < 800) {
+      log("Слишком мало сэмплов.", "warn");
+      return;
+    }
+    var b64 = int16ToBase64(int16);
+    statusEl.textContent = "Отправка…";
+    try {
+      var out = await sendTurn(sr, b64);
+      log("Распознано: " + (out.transcript || "(пусто)"), "ok");
+      log("Ответ: " + (out.reply || ""));
+      if (out.audioMp3Base64) await playMp3Base64(out.audioMp3Base64);
+      statusEl.textContent = "Готово. Удерживайте снова.";
+    } catch (e) {
+      log("Ошибка: " + (e && e.message ? e.message : String(e)), "warn");
+      statusEl.textContent = "Ошибка запроса.";
+    }
+  }
+
+  var activePointerId = null;
+
+  async function pointerDown(ev) {
+    if (activePointerId != null) return;
+    activePointerId = ev.pointerId;
+    ptt.setPointerCapture(ev.pointerId);
+    try {
+      await ensureMic();
+      startCapture();
+      ptt.classList.add("recording");
+      ptt.setAttribute("aria-pressed", "true");
+      statusEl.textContent = "Запись… отпустите кнопку.";
+    } catch (e) {
+      activePointerId = null;
+      log((e && e.message) || String(e), "warn");
+      statusEl.textContent = "Нет доступа к микрофону.";
+    }
+  }
+
+  function pointerUp(ev) {
+    if (ev.pointerId !== activePointerId) return;
+    activePointerId = null;
+    try { ptt.releasePointerCapture(ev.pointerId); } catch (x) { /* */ }
+    ptt.classList.remove("recording");
+    ptt.setAttribute("aria-pressed", "false");
+    endCaptureAndSend();
+  }
+
+  ptt.addEventListener("pointerdown", pointerDown);
+  ptt.addEventListener("pointerup", pointerUp);
+  ptt.addEventListener("pointercancel", pointerUp);
+  ptt.addEventListener("lostpointercapture", function () {
+    ptt.classList.remove("recording");
   });
 })();
   </script>

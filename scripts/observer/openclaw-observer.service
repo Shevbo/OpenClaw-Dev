@@ -6,6 +6,9 @@ After=network-online.target
 Type=oneshot
 Environment=HOME=/home/shevbo
 Environment=LC_ALL=C.UTF-8
+# Исходящий трафик observer (Telegram, registry-runner, heal python) — только через прокси, как у шлюза.
+EnvironmentFile=-/etc/proxy6/environment.env
+EnvironmentFile=-%h/.config/proxy6/proxy.systemd.env
 EnvironmentFile=-/home/shevbo/.config/openclaw/observer/observer.env
 ExecStart=/home/shevbo/bin/openclaw-observer.sh
 

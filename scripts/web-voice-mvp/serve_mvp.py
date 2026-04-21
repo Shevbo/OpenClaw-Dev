@@ -5,6 +5,10 @@
   # open http://127.0.0.1:8765/  — localhost counts as a secure context for mic in Chromium.
 
 For HTTPS on a public host use your reverse proxy (e.g. Caddy) and point root to this directory.
+
+Voice STT/TTS API (Google): run `pip install -r requirements-voice-mvp.txt` then `python voice_backend.py`
+(listens on 127.0.0.1:8091). Open index.html with `?api=http://127.0.0.1:8091` when static files are served here.
+See ../Caddyfile.voice-mvp.snippet for production routing.
 """
 
 from __future__ import annotations

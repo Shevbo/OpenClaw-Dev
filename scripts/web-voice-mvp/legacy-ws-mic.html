@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Legacy: микрофон + WebSocket</title>
+  <style>
+    :root { color-scheme: dark light; font-family: system-ui, sans-serif; }
+    body { max-width: 44rem; margin: 2rem auto; padding: 0 1rem; }
+    #log { white-space: pre-wrap; background: #1112; padding: 1rem; border-radius: 8px; min-height: 4rem; font-size: 0.85rem; }
+    .warn { color: #b45309; } .ok { color: #047857; }
+    input[type="text"] { width: 100%; max-width: 40rem; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <h1>Legacy: WebSocket + микрофон</h1>
+  <p><a href="index.html">← голосовой чат (STT/TTS)</a></p>
+  <label>WebSocket<br /><input id="wsUrl" type="text" placeholder="wss://..." /></label>
+  <p>
+    <button type="button" id="btnMic">Микрофон</button>
+    <button type="button" id="btnWs">WebSocket</button>
+    <button type="button" id="btnStop">Стоп</button>
+  </p>
+  <div id="log"></div>
+  <script>
+(function () {
+  var logEl = document.getElementById("log");
+  var wsInput = document.getElementById("wsUrl");
+  var stream = null, ws = null;
+  var q = new URLSearchParams(location.search);
+  var pre = q.get("ws") || q.get("voice_ws");
+  if (pre) wsInput.value = decodeURIComponent(pre);
+  function log(m, c) { var s = document.createElement("span"); if (c) s.className = c; s.textContent = m + "\n"; logEl.appendChild(s); }
+  document.getElementById("btnMic").onclick = function () {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (s) { stream = s; log("Микрофон ок", "ok"); }).catch(function (e) { log(String(e), "warn"); });
+  };
+  document.getElementById("btnWs").onclick = function () {
+    var u = (wsInput.value || "").trim();
+    if (!u) return;
+    ws = new WebSocket(u); ws.onopen = function () { log("WS open", "ok"); };
+    ws.onclose = function (e) { log("WS close " + e.code); }; ws.onerror = function () { log("WS error", "warn"); };
+    ws.onmessage = function (e) { log(typeof e.data === "string" ? e.data : "binary"); };
+  };
+  document.getElementById("btnStop").onclick = function () {
+    if (ws) ws.close();
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+  };
+})();
+  </script>
+</body>
+</html>

@@ -37,6 +37,16 @@
       "cooldown_sec": 3600
     },
     {
+      "id": "google-auth-profile-unavailable",
+      "title": "Google/Gemini: нет auth profile (cooldown, квота, ключи)",
+      "journal_patterns": [
+        "No available auth profile for google",
+        "FailoverError: No available auth profile for google"
+      ],
+      "fix": "fix-google-auth-gateway-restart.sh",
+      "cooldown_sec": 3600
+    },
+    {
       "id": "agent-llm-no-response",
       "title": "Агент не сгенерировал ответ / cron billing-monitor (LLM, таймаут, сессия)",
       "journal_patterns": [

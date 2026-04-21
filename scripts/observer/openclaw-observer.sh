@@ -22,6 +22,8 @@ FETCH_PROXY="${OBSERVER_FETCH_PROXY:-$HOME/.local/bin/proxy6-fetch-proxy-env.py}
 SYNC_SYSTEM_PROXY="${OBSERVER_SYNC_SYSTEM_PROXY:-/usr/local/sbin/sync-proxy6-system-env.sh}"
 MAX_LOG_BYTES="${OBSERVER_MAX_LOG_BYTES:-1048576}"
 FAILS_BEFORE_REBOOT="${OBSERVER_FAILS_BEFORE_REBOOT:-12}"
+# Алерт «No available auth profile for google» отдельно (иначе спам на каждый новый хэш среза журнала)
+GOOGLE_AUTH_ALERT_COOLDOWN_SEC="${OBSERVER_GOOGLE_AUTH_ALERT_COOLDOWN_SEC:-21600}"
 # 12 * 5 мин ≈ 1 час полного даунтайма шлюза
 # Реестр авто-исправлений: ~/.config/openclaw/observer/troubleshooting/ (или рядом со скриптом)
 OBSERVER_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,6 +35,22 @@ if [[ -f "$LOG_FILE" ]] && [[ "$(stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)" -
 fi
 
 log() { echo "$(date -Iseconds) $*" | tee -a "$LOG_FILE"; }
+
+# Прокси в окружение всего скрипта (registry-runner, python heal и т.д.). Проверка шлюза на 127.0.0.1 ниже снимает прокси явно.
+load_observer_proxy_env() {
+	local f
+	for f in "/etc/proxy6/environment.env" "${HOME}/.config/proxy6/proxy.systemd.env"; do
+		[[ -r "$f" ]] || continue
+		set -a
+		# shellcheck source=/dev/null
+		. "$f"
+		set +a
+		log "proxy env loaded from $f"
+		return 0
+	done
+	log "proxy env: no readable /etc/proxy6/environment.env or ~/.config/proxy6/proxy.systemd.env"
+}
+load_observer_proxy_env
 
 load_telegram() {
 	TELEGRAM_BOT_TOKEN=""
@@ -157,10 +175,34 @@ run_troubleshooting_registry() {
 }
 
 scan_logs() {
-	# Критичные паттерны за последние 20 минут (user unit)
+	# Критичные паттерны за последние 20 минут (user unit).
+	# «No available auth profile for google» сюда не включаем — отдельный throttled-алерт (см. scan_logs_google_auth_alert).
 	journalctl --user -u "$GATEWAY_UNIT" --since "20 min ago" --no-pager 2>/dev/null | grep -iE \
-		'API_KEY_INVALID|API key expired|User location is not supported|No available auth profile for google|FATAL|EADDRINUSE|Cannot find module' \
+		'API_KEY_INVALID|API key expired|User location is not supported|FATAL|EADDRINUSE|Cannot find module' \
 		|| true
+}
+
+scan_logs_google_auth() {
+	journalctl --user -u "$GATEWAY_UNIT" --since "20 min ago" --no-pager 2>/dev/null | grep -iE \
+		'No available auth profile for google|FailoverError: No available auth profile for google' \
+		|| true
+}
+
+maybe_notify_google_auth_logs() {
+	local chunk stamp last now
+	chunk="$(scan_logs_google_auth)"
+	[[ -n "$chunk" ]] || return 0
+	stamp="$STATE_DIR/google_auth_log_telegram_last"
+	now="$(date +%s)"
+	last=0
+	[[ -f "$stamp" ]] && last="$(cat "$stamp" 2>/dev/null || echo 0)"
+	if [[ "$((now - last))" -lt "$GOOGLE_AUTH_ALERT_COOLDOWN_SEC" ]]; then
+		log "google auth log alert: skip (cooldown ${GOOGLE_AUTH_ALERT_COOLDOWN_SEC}s)"
+		return 0
+	fi
+	echo "$now" >"$stamp"
+	notify_telegram "observer[$HOSTNAME]: Google/Gemini — нет доступного auth profile (cooldown/unavailable). Проверьте квоты/ключи в openclaw и Google Cloud. Реестр может перезапустить шлюз. Срез журнала (укороч.):
+${chunk:0:2800}"
 }
 
 heal_caddy() {
@@ -278,6 +320,8 @@ ${LOG_ISSUES:0:3000}"
 		heal_caddy
 	fi
 fi
+
+maybe_notify_google_auth_logs
 
 run_troubleshooting_registry
 

@@ -41,6 +41,7 @@ Runner добавит его к тексту для поиска (до ~200 KiB 
 | `docker-sock-sandbox-inspect` | `permission denied` к `docker.sock`, ошибки inspect образа sandbox | `ls -la /var/run/docker.sock`; `groups`; `journalctl --user -u openclaw-gateway -n 50` | `fix-docker-socket-gateway.sh` |
 | `sandbox-missing-runtime` | В песочнице нет `node` / `python3` / CLI | `openclaw sandbox explain`; `docker images`; `which openclaw` | `fix-sandbox-recreate.sh` |
 | `eaddrinuse-port` | `EADDRINUSE`, порт занят | `ss -tlnp \| grep 18789`; `systemctl --user status openclaw-gateway` | `fix-eaddrinuse-gateway-caddy.sh` |
+| `google-auth-profile-unavailable` | `No available auth profile for google`, FailoverError Google | Квоты/ключи Google Cloud, `openclaw config`; см. лог `~/.local/log/openclaw-observer-google-auth-recover.log` | `fix-google-auth-gateway-restart.sh` (restart шлюза, cooldown 1 ч) |
 | `agent-llm-no-response` | «couldn't generate», cron `billing-monitor-daily` failed | `journalctl --user -u openclaw-gateway -n 80`; ключи/квота вручную | `fix-agent-llm-gateway-recover.sh` (validate + restart) |
 | `monitoring-sandbox-paths` | Health/incident, monitoring вне sandbox, пути `/home/.../workspace/monitoring` | Промпты: `monitoring/` или `/workspace/monitoring/` | `fix-monitoring-workspace-in-sandbox.sh` (замена абсолютного пути на `monitoring/` в `*.md,yaml,yml,json,txt,sh` под workspace + в `openclaw.json`; symlink в `sandboxes/agent-*`). Отключить правки текста: `OBSERVER_SKIP_MONITORING_PATH_REPLACE=1` |
 

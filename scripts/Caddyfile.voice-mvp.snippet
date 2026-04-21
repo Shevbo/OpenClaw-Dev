@@ -1,0 +1,16 @@
+# Paste inside your site block. Copy HTML to /var/www/openclaw-voice-mvp/
+# Backend: cd .../web-voice-mvp && pip install -r requirements-voice-mvp.txt && python voice_backend.py
+# Env: GOOGLE_API_KEY (Speech + Text-to-Speech APIs enabled), optional AGENT_URL, GOOGLE_TTS_VOICE, VOICE_API_SECRET
+
+@voice_mvp_api {
+	path /voice-mvp/api/*
+}
+handle @voice_mvp_api {
+	uri strip_prefix /voice-mvp
+	reverse_proxy 127.0.0.1:8091
+}
+
+handle_path /voice-mvp/* {
+	root * /var/www/openclaw-voice-mvp
+	file_server
+}
