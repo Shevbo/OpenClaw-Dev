@@ -80,7 +80,9 @@
 
 | Область | Пути |
 |----------|------|
+| Инструкции агента (Cursor) | **`AGENTS.md`**, **`.cursor/rules/openclaw-gateway-wiki.mdc`** |
 | OpenClaw cloud/Pi | **`scripts/openclaw/*.sh`**, **`patch-tools-media-audio-google-only.py`**, **`patch-openclaw-throughput-mitigation.py`**, **`openclaw-gateway-via-docker-group.sh`**, **`sync-telegram-proxy-from-proxy6-env.py`**, **`patch-enable-nodes-sandbox-tool.py`**, **`patch-openclaw-dev-full-access.py`**, **`patch-agent-alsoallow-google-direct-runtime.py`**, **`openclaw-gateway.service.d-*.conf`** |
+| Вики на шлюзе (канон) | **`/home/shevbo/.openclaw/Wiki/`**; зеркало в репо: **`scripts/wiki/*.md`** |
 | Observer | **`scripts/observer/openclaw-observer.sh`**, **`.service`**, **`.timer`**, **`Wiki-Observer.md`**, **`troubleshooting/*`** |
 | Прокси | **`scripts/proxy6/*`** (`sync-proxy6-system-env.sh`, `verify-shevbo-proxy-egress.sh`, `install-openclaw-gateway-proxy-dropin.sh`) |
 | Caddy | **`scripts/wiki/Caddy.md`**, **`scripts/Caddyfile.claw.shectory.ru.snippet`**, **`Caddyfile.voice-mvp.snippet`** |
