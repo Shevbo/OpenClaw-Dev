@@ -2,11 +2,13 @@
 
 Контекст для продолжения в Cursor с **этой точки**. Пользователь: **shevbo** на VPS; домен: **shectory.ru** (план: поддомен **claw.shectory.ru**).
 
+**Вики на шлюзе (канон):** **`/home/shevbo/.openclaw/Wiki/`** — туда писать операционные документы; **`scripts/wiki/`** в репо — зеркало для Git. См. **`AGENTS.md`**.
+
 ---
 
 ## Политика медиа (строгое требование)
 
-**Голос входящий (распознавание / STT) и озвучка ответов (TTS) — только Google (Gemini API).** OpenAI для транскрипции голосовых и плагин `openai` в конфиге не используются. Подробно: `scripts/wiki/OpenClaw-shevbo-google-only-voice.md`. Скрипт применения: `scripts/openclaw/patch-tools-media-audio-google-only.py`. Профиль **`openai-codex`** (OAuth Codex/ACP) — отдельно, при необходимости оставляют.
+**Голос входящий (распознавание / STT) и озвучка ответов (TTS) — только Google (Gemini API).** OpenAI для транскрипции голосовых и плагин `openai` в конфиге не используются. Подробно: **`~/.openclaw/Wiki/OpenClaw-shevbo-google-only-voice.md`** (копия в репо: `scripts/wiki/…`). Скрипт применения: `scripts/openclaw/patch-tools-media-audio-google-only.py`. Профиль **`openai-codex`** (OAuth Codex/ACP) — отдельно, при необходимости оставляют.
 
 ---
 

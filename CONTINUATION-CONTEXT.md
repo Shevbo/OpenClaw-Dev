@@ -47,7 +47,8 @@
 
 ### Репозиторий и вики
 
-- Скрипты и вики в **`scripts/`**, handoff: **`cursor-handoff-openclaw-shevbo-cloud.md`**, **`AGENT-CONTEXT-OpenClaw-Caddy-Developer.md`**. На VPS зеркала вики: **`~/.openclaw/Wiki/`** (деплоить из **`scripts/wiki/*.md`**).
+- **Канон операционной документации на шлюзе:** **`/home/shevbo/.openclaw/Wiki/`** (пользователь **`shevbo`**). Все новые/обновлённые статьи и описания процедур — **сначала или одновременно там**; в репозитории каталог **`scripts/wiki/`** — **зеркало для Git** (после правок синхронизировать: `scp scripts/wiki/*.md shevbo-cloud:~/.openclaw/Wiki/` или точечно по файлам). Системный контекст для агента: **`AGENTS.md`**, правило **`.cursor/rules/openclaw-gateway-wiki.mdc`**.
+- Скрипты в **`scripts/`**, handoff: **`cursor-handoff-openclaw-shevbo-cloud.md`**, **`AGENT-CONTEXT-OpenClaw-Caddy-Developer.md`**.
 - **Голосовой веб-MVP** в репо: **`scripts/web-voice-mvp/`** (**`voice_backend.py`** ~**8091**, **`serve_mvp.py`** ~**8765**, **`requirements-voice-mvp.txt`**, **`legacy-ws-mic.html`**), **`scripts/Caddyfile.voice-mvp.snippet`**. Вспомогательно: **`scripts/telegram-voice-bridge/`** (не обязательный путь MVP).
 - **SSH Windows**: **`scripts/ssh/ssh-passwordless-setup.ps1`** (прокси Gallery, Proxy6, **`curl --proxy-user`**); локальная копия вне репо могла быть **`c:\dev\ssh-passwordless-setup.ps1`** / **`c:\dev\p.txt`** — ориентир репо.
 
@@ -160,7 +161,7 @@ Ingest из Telegram (на облаке):
 1. `git pull`  
 2. `ssh -o BatchMode=yes shevbo-cloud true` (и **shevbo-pi** по необходимости)  
 3. `ssh shevbo-cloud 'openclaw gateway status && openclaw config validate'`  
-4. Сверить **`scripts/wiki/OpenClaw-shevbo-google-only-voice.md`** с фактическим конфигом (**`tools.media.audio`**, **`messages.tts`**) через **`openclaw config file`** / **jq** (без печати секретов)  
+4. Вики на шлюзе: сверить **`~/.openclaw/Wiki/*.md`** с конфигом; при правках в репо — **`scp scripts/wiki/*.md shevbo-cloud:~/.openclaw/Wiki/`** (см. **`AGENTS.md`**). Сверить **`OpenClaw-shevbo-google-only-voice.md`** с **`tools.media.audio`** / **`messages.tts`** через **jq** (без секретов)  
 5. `bash scripts/proxy6/verify-shevbo-proxy-egress.sh` на VPS (или **`~/bin`** после копирования) + отдельно учесть **cron без прокси**  
 6. Закрыть хвосты из **§3**
 
