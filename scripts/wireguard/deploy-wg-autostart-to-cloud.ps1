@@ -1,9 +1,14 @@
-# Запуск с ПК, где "ssh shevbo-cloud" уже работает (тот же ~/.ssh/config).
-# Из корня репозитория:  powershell -ExecutionPolicy Bypass -File scripts/wireguard/deploy-wg-autostart-to-cloud.ps1
+# Только Windows PowerShell (не Git Bash / не sh / не WSL bash).
+# В каталоге репозитория, например:  cd C:\dev\openclaw
+#   powershell -ExecutionPolicy Bypass -File scripts\wireguard\deploy-wg-autostart-to-cloud.ps1
 $ErrorActionPreference = "Stop"
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$root = Split-Path -Parent (Split-Path -Parent $here)
-$wg = Join-Path $root "scripts\wireguard"
+$scriptPath = $MyInvocation.MyCommand.Path
+if (-not $scriptPath) { $scriptPath = $PSCommandPath }
+if (-not $scriptPath) {
+  Write-Error "Запустите явно: powershell -ExecutionPolicy Bypass -File scripts\wireguard\deploy-wg-autostart-to-cloud.ps1 из каталога репозитория."
+  exit 1
+}
+$wg = Split-Path -Parent $scriptPath
 $remote = "shevbo-cloud"
 $dest = "~/wireguard-deploy"
 
