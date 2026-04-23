@@ -1,0 +1,9 @@
+# Скопировать: sudo cp scripts/wireguard/shevbo-wg-health.default.example /etc/default/shevbo-wg-health
+# Права: chmod 644 /etc/default/shevbo-wg-health
+#
+# На shevbo-pi: WG_HEALTH_TARGET = WG-IP облака (часто 10.66.0.3).
+# На shevbo-cloud: WG_HEALTH_TARGET = WG-IP Raspberry Pi (часто 10.66.0.2).
+
+WG_IF=wg0
+# Пример для Pi — замените на облаке на IP Pi в туннеле:
+WG_HEALTH_TARGET=10.66.0.3

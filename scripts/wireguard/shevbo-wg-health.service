@@ -1,0 +1,8 @@
+[Unit]
+Description=Shevbo WireGuard health (ping peer, restart wg-quick on failure)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/shevbo-wg-healthcheck.sh

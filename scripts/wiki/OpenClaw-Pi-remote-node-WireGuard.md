@@ -20,6 +20,27 @@ curl -sS -o /dev/null -w "%{http_code}\n" "http://<WG_IP_облака>:18789/__o
 
 Аналогия с **shevbo-shectory**: там обычно оба конца знают peer и маршруты; здесь то же — **маршрут до WG-IP облака с Pi** обязателен для прямого WebSocket без SSH.
 
+## Автозапуск и стабильность туннеля (shevbo-cloud ↔ shevbo-pi)
+
+Чтобы после перезагрузки **оба** хоста сами поднимали `wg0` и туннель не «засыпал» за NAT:
+
+1. **`wg0.conf`** уже согласован (ключи, `AllowedIPs`, на Pi — **`Endpoint`** публичного облака с портом WG).
+2. На **Raspberry Pi за NAT** один раз добавьте keepalive к peer с `Endpoint` (иначе handshake на VPS может долго не обновляться):
+   ```bash
+   sudo bash scripts/wireguard/shevbo-wg-peer-ensure-keepalive.sh
+   ```
+3. На **каждом** хосте (облако и Pi) включите автозапуск `wg-quick` и при желании watchdog по ping:
+   ```bash
+   # опционально: периодический ping противоположной стороны + restart wg при обрыве
+   sudo cp scripts/wireguard/shevbo-wg-health.default.example /etc/default/shevbo-wg-health
+   sudo nano /etc/default/shevbo-wg-health   # на Pi: WG_HEALTH_TARGET=WG-IP облака; на облаке: WG-IP Pi
+   sudo bash scripts/wireguard/shevbo-wg-enable-autostart.sh
+   ```
+   Скрипт делает: **`systemctl enable --now wg-quick@wg0`**, копирует **`shevbo-wg-healthcheck.sh`** в `/usr/local/sbin`, при наличии **`/etc/default/shevbo-wg-health`** — timer **`shevbo-wg-health.timer`** (раз в несколько минут).
+4. Диагностика на Pi: **`scripts/pi/shevbo-pi-wg-cloud-check.sh`** (опция **`--restart`**).
+
+Файлы в репозитории: `scripts/wireguard/shevbo-wg-enable-autostart.sh`, `shevbo-wg-peer-ensure-keepalive.sh`, `shevbo-wg-healthcheck.sh`, `shevbo-wg-health.service`, `shevbo-wg-health.timer`, `shevbo-wg-health.default.example`.
+
 ## Вариант A (предпочтительно): WebSocket по WireGuard
 
 1. **Облако** (`~/.openclaw/openclaw.json`): шлюз слушает адрес, доступный с Pi. Часто достаточно `gateway.bind: lan` и открыть **18789/tcp только для интерфейса WG** (или для подсети WG в `ufw`), не обязательно весь интернет.
@@ -112,5 +133,9 @@ bash scripts/openclaw/pi-node-remote-to-cloud.sh
 | `scripts/openclaw/cloud-rotate-gateway-token-full.sh` | Ротация токена шлюза + sync на Pi + обновление URL-файла для UI |
 | `scripts/wiki/SSH-shevbo-cloud-to-pi.md` | SSH cloud → Pi (админка), не путать с трафиком node |
 | `scripts/openclaw/install-openclaw-pi-minimal.sh` | CLI на Pi |
+| `scripts/pi/shevbo-pi-wg-cloud-check.sh` | Диагностика WG с Pi к облаку (`--restart` опционально) |
+| `scripts/wireguard/shevbo-wg-enable-autostart.sh` | `enable+start` **wg-quick@wg0**, опционально timer health-check |
+| `scripts/wireguard/shevbo-wg-peer-ensure-keepalive.sh` | **PersistentKeepalive** в `[Peer]` с **Endpoint** (обычно Pi) |
+| `scripts/wireguard/shevbo-wg-healthcheck.sh` + `.service` + `.timer` + `shevbo-wg-health.default.example` | Ping противоположного WG-IP и **restart** интерфейса при обрыве |
 
 Официально: [Remote Access](https://docs.openclaw.ai/gateway/remote), [`openclaw node`](https://docs.openclaw.ai/cli/node), [`openclaw devices`](https://docs.openclaw.ai/cli/devices).

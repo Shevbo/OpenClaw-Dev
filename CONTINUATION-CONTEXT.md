@@ -88,7 +88,7 @@
 | Observer | **`scripts/observer/openclaw-observer.sh`**, **`.service`**, **`.timer`**, **`Wiki-Observer.md`**, **`troubleshooting/*`** |
 | Прокси | **`scripts/proxy6/*`** (`sync-proxy6-system-env.sh`, `verify-shevbo-proxy-egress.sh`, `install-openclaw-gateway-proxy-dropin.sh`) |
 | Caddy | **`scripts/wiki/Caddy.md`**, **`scripts/Caddyfile.claw.shectory.ru.snippet`**, **`Caddyfile.voice-mvp.snippet`** |
-| Pi / WG | **`scripts/wiki/OpenClaw-Pi-remote-node-WireGuard.md`**, **`OpenClaw-Pi-repair-rotate-and-secrets.md`**, **`SSH-shevbo-cloud-to-pi.md`**, **`scripts/pi/shevbo-pi-wg-cloud-check.sh`**, кратко для Cursor+SSH: **`Context-shevbo-pi-Cursor-SSH.md`** |
+| Pi / WG | **`scripts/wiki/OpenClaw-Pi-remote-node-WireGuard.md`**, **`OpenClaw-Pi-repair-rotate-and-secrets.md`**, **`SSH-shevbo-cloud-to-pi.md`**, **`scripts/pi/shevbo-pi-wg-cloud-check.sh`**, автозапуск WG: **`scripts/wireguard/shevbo-wg-enable-autostart.sh`**, **`shevbo-wg-peer-ensure-keepalive.sh`**, **`shevbo-wg-healthcheck.sh`**, **`shevbo-wg-health.service`**, **`shevbo-wg-health.timer`**, **`shevbo-wg-health.default.example`**, Cursor+SSH: **`Context-shevbo-pi-Cursor-SSH.md`** |
 | Голос политика | **`scripts/wiki/OpenClaw-shevbo-google-only-voice.md`** |
 | SSH Windows / проверка | **`scripts/ssh/ssh-passwordless-setup.ps1`**, **`scripts/ssh/verify-shevbo-pi-ssh-batchmode.sh`** |
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic WireGuard peer check (shevbo-cloud <-> shevbo-pi)
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=4min
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
